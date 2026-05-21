@@ -49,16 +49,16 @@ const WORLD_PLACES = [
 // 데모 진행도(별 갯수) — localStorage 가 비어있을 때 보여주는 4단계 미리보기.
 // 흐림(0)/또렷(1~4)/꽃(5~14)/반짝(15+)
 const DEMO_STARS = {
-  'p-color':   18, // ✨반짝
-  'p-shape':    3, // 또렷
-  'p-music':    7, // 🌸꽃
-  'p-hangul':   1, // 또렷
-  'p-english':  0, // 흐림
-  'p-math':     8, // 🌸꽃
-  'p-code':     2, // 또렷
-  'p-brain':    0, // 흐림
-  'p-comp':     0, // 흐림
-  'p-social':   0, // 흐림
+  'p-color':   0, // ✨반짝
+  'p-shape':   0, // 또렷
+  'p-music':   0, // 🌸꽃
+  'p-hangul':  0, // 또렷
+  'p-english': 0, // 흐림
+  'p-math':    0, // 🌸꽃
+  'p-code':    0, // 또렷
+  'p-brain':   0, // 흐림
+  'p-comp':    0, // 흐림
+  'p-social':  0, // 흐림
 };
 
 // ─────────────────────────────────────────────────────────────

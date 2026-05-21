@@ -8,6 +8,13 @@ import './styles.css'
 const DESIGN_W = 1024
 const DESIGN_H = 768
 
+function currentTimeOfDay() {
+  const h = new Date().getHours()
+  if (h < 11) return 'morning'
+  if (h < 17) return 'day'
+  return 'evening'
+}
+
 function useFitScale() {
   const [scale, setScale] = useState(1)
   useEffect(() => {
@@ -57,7 +64,7 @@ function RootApp() {
           fontSize={settings.fontSize}
           mascotOn={settings.mascotOn}
           voiceShow={settings.voiceShow}
-          timeOfDay="day"
+          timeOfDay={currentTimeOfDay()}
           splashKey={0}
           settings={settings}
           onSettingsChange={updateSettings}
