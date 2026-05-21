@@ -1079,7 +1079,7 @@ function ParentSettings({ tone, onClose, settings: appSettings, onSettingsChange
               ].map((o) => {
                 const active = (appSettings?.toneId || 'C') === o.id;
                 return (
-                  <button key={o.id} onClick={() => onSettingsChange && onSettingsChange({ toneId: o.id })}
+                  <button key={o.id} onClick={() => onSettingsChange({ toneId: o.id })}
                     style={{
                       height: 44, padding: '0 8px',
                       background: active ? ink : '#fff',
