@@ -27,7 +27,11 @@ function RootApp() {
 
   const updateSettings = (partial) => {
     setSettings((prev) => {
-      const next = { ...prev, ...partial }
+      const next = {
+        ...prev,
+        ...partial,
+        ...(partial.volume ? { volume: { ...prev.volume, ...partial.volume } } : {}),
+      }
       saveSettings(next)
       return next
     })

@@ -1,6 +1,7 @@
 // KidsWeb localStorage 영속화 헬퍼
 
 const SETTINGS_KEY = 'kw-settings'
+const STARS_KEY = 'kw-stars'
 
 export const DEFAULT_SETTINGS = {
   toneId: 'C',        // 'A' | 'B' | 'C'
@@ -26,10 +27,12 @@ export function saveSettings(settings) {
 }
 
 export function loadStars() {
-  const n = Number(localStorage.getItem('kw-stars'))
-  return Number.isFinite(n) ? n : 0
+  try {
+    const n = Number(localStorage.getItem(STARS_KEY))
+    return Number.isFinite(n) && n >= 0 ? n : 0
+  } catch { return 0 }
 }
 
 export function saveStars(n) {
-  try { localStorage.setItem('kw-stars', String(n)) } catch {}
+  try { localStorage.setItem(STARS_KEY, String(n)) } catch {}
 }
