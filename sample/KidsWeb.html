@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>KidsWeb · 만 3~5세 유아용 PWA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Jua&display=swap" rel="stylesheet">
+
+<style>
+  html, body { margin: 0; padding: 0; background: #f0eee9; font-family: 'Gaegu', system-ui, sans-serif; }
+  body { overscroll-behavior: none; }
+  * { box-sizing: border-box; }
+
+  /* 공용 키프레임 (활동 컴포넌트에서 사용) */
+  @keyframes kw-pop {
+    0%   { transform: scale(0); opacity: 0; }
+    70%  { transform: scale(1.18); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  @keyframes kw-ripple {
+    0%   { transform: translate(-50%, -50%) scale(0); opacity: 0.7; }
+    100% { transform: translate(-50%, -50%) scale(3); opacity: 0; }
+  }
+  @keyframes kw-star-pop {
+    0%   { transform: translate(-50%, -50%) scale(0.2); opacity: 0; }
+    25%  { transform: translate(-50%, -50%) scale(1.35); opacity: 1; }
+    70%  { transform: translate(-50%, -150%) scale(1.15); opacity: 1; }
+    100% { transform: translate(-50%, -260%) scale(0.85); opacity: 0; }
+  }
+  @keyframes kw-wave {
+    0%, 100% { transform: rotate(-10deg); }
+    50%      { transform: rotate(30deg); }
+  }
+  @keyframes kw-voice {
+    0%, 100% { transform: scaleY(0.3); }
+    50%      { transform: scaleY(1); }
+  }
+  @keyframes kw-spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+  @keyframes kw-float {
+    0%, 100% { transform: translateY(0); opacity: 0.55; }
+    50%      { transform: translateY(-18px); opacity: 0.85; }
+  }
+  @keyframes kw-splash-rainbow {
+    0%   { transform: scale(0) rotate(-20deg); opacity: 0; }
+    60%  { transform: scale(1.18) rotate(6deg); opacity: 1; }
+    100% { transform: scale(1) rotate(0); opacity: 1; }
+  }
+  @keyframes kw-splash-title {
+    0%   { transform: translateY(28px) scale(0.9); opacity: 0; }
+    60%  { transform: translateY(-4px) scale(1.04); opacity: 1; }
+    100% { transform: translateY(0) scale(1); opacity: 1; }
+  }
+  @keyframes kw-splash-sub {
+    0%   { transform: translateY(12px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 0.95; }
+  }
+  @keyframes kw-pulse {
+    0%, 100% { filter: drop-shadow(0 0 0 transparent); transform: scale(1); }
+    50%      { filter: drop-shadow(0 0 14px #FFE66D) drop-shadow(0 0 22px #FFE66D); transform: scale(1.015); }
+  }
+  @keyframes kw-toast {
+    0%   { transform: translate(-50%, -50%) scale(0.6); opacity: 0; }
+    20%  { transform: translate(-50%, -50%) scale(1.05); opacity: 1; }
+    80%  { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    100% { transform: translate(-50%, -80%) scale(0.96); opacity: 0; }
+  }
+  @keyframes kw-ring {
+    0%   { transform: scale(1); opacity: 0.9; }
+    100% { transform: scale(1.25); opacity: 0; }
+  }
+  @keyframes kw-shake {
+    0%, 100% { transform: translateX(0); }
+    20%      { transform: translateX(-6px); }
+    40%      { transform: translateX(6px); }
+    60%      { transform: translateX(-4px); }
+    80%      { transform: translateX(4px); }
+  }
+  @keyframes kw-confetti {
+    0%   { transform: translate(0, -40px) rotate(0); opacity: 0; }
+    8%   { opacity: 1; }
+    100% { transform: translate(var(--drift), 100vh) rotate(var(--rot)); opacity: 1; }
+  }
+  @keyframes kw-star-spring {
+    0%   { transform: scale(0) rotate(-30deg); opacity: 0; }
+    55%  { transform: scale(1.35) rotate(8deg); opacity: 1; }
+    75%  { transform: scale(0.92) rotate(-3deg); }
+    100% { transform: scale(1) rotate(0); opacity: 1; }
+  }
+  @keyframes kw-celeb-title {
+    0%   { transform: scale(0.5) translateY(20px); opacity: 0; }
+    60%  { transform: scale(1.08) translateY(-2px); opacity: 1; }
+    100% { transform: scale(1) translateY(0); opacity: 1; }
+  }
+  @keyframes kw-celeb-card {
+    0%   { transform: translateY(20px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+  .kw-voice-bar {
+    display: inline-block;
+    width: 3px; height: 14px;
+    background: #fff; border-radius: 2px;
+    animation: kw-voice 0.7s ease-in-out infinite;
+    transform-origin: center;
+  }
+
+  /* 베젤 카드의 모서리는 design_canvas가 보더라디우스로 자르도록 — overflow:hidden */
+  .dc-card { background: transparent !important; }
+</style>
+</head>
+<body>
+
+<div id="root"></div>
+
+<!-- React & Babel (pinned) -->
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<!-- 스타터 & 도메인 컴포넌트 -->
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="kidsweb-themes.jsx"></script>
+<script type="text/babel" src="kidsweb-shell.jsx"></script>
+<script type="text/babel" src="kidsweb-activities.jsx"></script>
+<script type="text/babel" src="kidsweb-app.jsx"></script>
+
+<script type="text/babel">
+  const { useState } = React;
+
+  const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+    "timeOfDay": "morning",
+    "fontSize": 26,
+    "mascotOn": true,
+    "voiceShow": true,
+    "showOnly": "C"
+  }/*EDITMODE-END*/;
+
+  function CanvasApp() {
+    const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+    const [splashKey, setSplashKey] = useState(0);
+
+    const tones = ['A', 'B', 'C'];
+    const visible = t.showOnly === 'all' ? tones : [t.showOnly];
+
+    return (
+      <>
+        <DesignCanvas>
+          <DCSection
+            id="tones"
+            title="KidsWeb · 톤앤매너 비교"
+            subtitle="만 3~5세 · 1024×768 가로모드 · 홈 → 서브메뉴 → 학습 활동까지 풀-플로우. 카드 헤더 클릭하면 한 화면에 집중해서 볼 수 있어요.">
+            {visible.map((id) => {
+              const tone = KIDS_TONES[id];
+              return (
+                <DCArtboard
+                  key={id}
+                  id={id}
+                  label={`톤 ${id} · ${tone.name}`}
+                  width={1140}
+                  height={830}>
+                  <IPadFrame>
+                    <KidsApp
+                      tone={tone}
+                      fontSize={t.fontSize}
+                      mascotOn={t.mascotOn}
+                      voiceShow={t.voiceShow}
+                      timeOfDay={t.timeOfDay}
+                      splashKey={splashKey}
+                    />
+                  </IPadFrame>
+                </DCArtboard>
+              );
+            })}
+          </DCSection>
+        </DesignCanvas>
+
+        <TweaksPanel title="Tweaks">
+          <TweakSection label="환경" />
+          <TweakRadio
+            label="시간대"
+            value={t.timeOfDay}
+            options={[
+              { value: 'morning', label: '아침' },
+              { value: 'day',     label: '낮' },
+              { value: 'evening', label: '저녁' },
+            ]}
+            onChange={(v) => setTweak('timeOfDay', v)}
+          />
+          <TweakSection label="보기" />
+          <TweakSelect
+            label="톤 표시"
+            value={t.showOnly}
+            options={[
+              { value: 'all', label: '전체 비교 (A·B·C)' },
+              { value: 'A',   label: 'A · 밝은 원색' },
+              { value: 'B',   label: 'B · 파스텔' },
+              { value: 'C',   label: 'C · 지브리 수채화' },
+            ]}
+            onChange={(v) => setTweak('showOnly', v)}
+          />
+          <TweakSection label="타이포그래피" />
+          <TweakSlider
+            label="폰트 크기"
+            value={t.fontSize}
+            min={20} max={32} step={2} unit="px"
+            onChange={(v) => setTweak('fontSize', v)}
+          />
+          <TweakSection label="동반자" />
+          <TweakToggle
+            label="마스코트 곰곰이"
+            value={t.mascotOn}
+            onChange={(v) => setTweak('mascotOn', v)}
+          />
+          <TweakToggle
+            label="음성 가이드 표시"
+            value={t.voiceShow}
+            onChange={(v) => setTweak('voiceShow', v)}
+          />
+          <TweakSection label="스플래시" />
+          <TweakButton
+            label="스플래시 다시 보기"
+            onClick={() => setSplashKey((k) => k + 1)}
+          />
+        </TweaksPanel>
+      </>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<CanvasApp />);
+</script>
+</body>
+</html>
