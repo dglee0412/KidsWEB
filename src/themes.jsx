@@ -2,8 +2,6 @@
 // 3가지 톤앤매너 팔레트 + 카테고리 데이터 + 시간대 배경
 // 모든 톤이 같은 카테고리 컬러 키를 가지므로 톤만 교체하면 UI가 통째로 바뀜.
 
-import React from 'react'
-
 const KIDS_CATEGORIES = [
   { id: 'color',   name: '색칠놀이',  emoji: '🎨',  hasSub: true,  done: true },
   { id: 'hangul',  name: '한글',     emoji: '가',  iconKind: 'text', hasSub: true,  done: true },

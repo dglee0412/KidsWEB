@@ -1,7 +1,7 @@
 // kidsweb-worldmap.jsx
 // 홈 화면 = 가로 스크롤 월드맵 "곰곰이의 사계절 마을"
 // 봄 → 여름 → 가을 3구역, 10개 장소를 곰곰이가 걸어다니며 탐험.
-// shell.jsx 의 HomeScreen 을 window.HomeScreen 으로 덮어씀.
+// WorldMapHome: app.jsx 에서 홈 화면으로 사용.
 
 import React from 'react'
 import { KIDS_CATEGORIES } from './themes.jsx'
