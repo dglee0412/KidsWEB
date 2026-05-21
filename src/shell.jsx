@@ -972,7 +972,7 @@ const TIME_OPTIONS = [
   { v: 'none', label: '무제한' },
 ];
 
-function ParentSettings({ tone, onClose }) {
+function ParentSettings({ tone, onClose, settings: appSettings, onSettingsChange }) {
   const t = tone;
   // 어른 화면 — 차분한 회색 톤, 카테고리 컬러는 액센트로만
   const [settings, setSettings] = useState(() => {
@@ -1069,6 +1069,35 @@ function ParentSettings({ tone, onClose }) {
           gap: 18,
           maxWidth: 960, margin: '0 auto',
         }}>
+          {/* 0) 화면 테마 (앱 전역 톤) */}
+          <SettingsCard title="화면 테마" emoji="🎨" subInk={subInk} ink={ink} cardBg={cardBg} hairline={hairline} wide>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+              {[
+                { id: 'A', label: '밝은 원색' },
+                { id: 'B', label: '파스텔' },
+                { id: 'C', label: '지브리 수채화' },
+              ].map((o) => {
+                const active = (appSettings?.toneId || 'C') === o.id;
+                return (
+                  <button key={o.id} onClick={() => onSettingsChange && onSettingsChange({ toneId: o.id })}
+                    style={{
+                      height: 44, padding: '0 8px',
+                      background: active ? ink : '#fff',
+                      color: active ? '#fff' : ink,
+                      border: `1.5px solid ${active ? ink : hairline}`,
+                      borderRadius: 10,
+                      fontSize: 14, fontWeight: 700,
+                      cursor: 'pointer', fontFamily: 'inherit',
+                      transition: 'background 0.12s, color 0.12s, border 0.12s',
+                    }}>{o.label}</button>
+                );
+              })}
+            </div>
+            <div style={{ marginTop: 10, fontSize: 12, color: subInk }}>
+              앱 전체의 색감 테마를 바꿔요. 아이 취향에 맞게 골라 주세요.
+            </div>
+          </SettingsCard>
+
           {/* 1) 사용시간 제한 */}
           <SettingsCard title="사용시간 제한" emoji="⏱" subInk={subInk} ink={ink} cardBg={cardBg} hairline={hairline}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
