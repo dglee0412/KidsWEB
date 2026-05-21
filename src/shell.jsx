@@ -4,6 +4,7 @@
 
 import React from 'react'
 import { KIDS_CATEGORIES } from './themes.jsx'
+import { COLORING_TEMPLATES } from './activities.jsx'
 
 const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
@@ -875,7 +876,7 @@ function GalleryScreen({ tone, fontSize, onPickColor }) {
 
 function GalleryThumb({ item, tone, fontSize, onRemove }) {
   const t = tone;
-  const tpl = (window.COLORING_TEMPLATES && window.COLORING_TEMPLATES[item.tplId]) || null;
+  const tpl = (COLORING_TEMPLATES && COLORING_TEMPLATES[item.tplId]) || null;
   const [confirming, setConfirming] = useState(false);
   const d = new Date(item.savedAt);
   const dateStr = `${d.getMonth() + 1}/${d.getDate()}`;
