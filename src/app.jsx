@@ -7,12 +7,13 @@ import { KIDS_CATEGORIES, timeOfDayBg, toneTexture } from './themes.jsx'
 import { BackButton, StarCounter, SubmenuScreen, PlaceholderScreen, ColorMenuScreen, FreeBgScreen, CelebrationScreen, ParentSettings, GalleryScreen } from './shell.jsx'
 import { WorldMapHome } from './worldmap.jsx'
 import { Activity } from './activities.jsx'
+import { loadStars, saveStars } from './lib/storage.js'
 
 const { useState: useStateApp, useEffect: useEffectApp, useRef: useRefApp } = React;
 
-function KidsApp({ tone, fontSize, mascotOn, voiceShow, timeOfDay, splashKey }) {
+function KidsApp({ tone, fontSize, mascotOn, voiceShow, timeOfDay, splashKey, settings, onSettingsChange }) {
   const [route, setRoute] = useStateApp({ screen: 'home' });
-  const [stars, setStars] = useStateApp(0);
+  const [stars, setStars] = useStateApp(loadStars);
   const [sessionStars, setSessionStars] = useStateApp(0);
   const [popKey, setPopKey] = useStateApp(0);
   const [reward, setReward] = useStateApp(null); // {n} 일시적 별 획득 오버레이
@@ -57,7 +58,7 @@ function KidsApp({ tone, fontSize, mascotOn, voiceShow, timeOfDay, splashKey }) 
   };
 
   const onActivityReward = (n) => {
-    setStars((s) => s + n);
+    setStars((s) => { const next = s + n; saveStars(next); return next; });
     setSessionStars((s) => s + n);
     setPopKey((k) => k + 1);
     setReward({ n, key: Date.now() });
@@ -84,7 +85,7 @@ function KidsApp({ tone, fontSize, mascotOn, voiceShow, timeOfDay, splashKey }) 
   if (route.screen === 'home') {
     content = <WorldMapHome tone={tone} fontSize={fontSize} mascotOn={mascotOn} onPick={pickCategory} stars={stars} timeOfDay={timeOfDay} onSettings={() => setRoute({ screen: 'settings' })} />;
   } else if (route.screen === 'settings') {
-    content = <ParentSettings tone={tone} onClose={() => setRoute({ screen: 'home' })} />;
+    content = <ParentSettings tone={tone} settings={settings} onSettingsChange={onSettingsChange} onClose={() => setRoute({ screen: 'home' })} />;
   } else if (route.screen === 'color-menu') {
     content = <ColorMenuScreen tone={tone} fontSize={fontSize} mascotOn={mascotOn} onPick={pickColorMenu} />;
   } else if (route.screen === 'free-bg') {

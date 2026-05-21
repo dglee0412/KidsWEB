@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { KidsApp } from './app.jsx'
 import { KIDS_TONES } from './themes.jsx'
+import { loadSettings, saveSettings } from './lib/storage.js'
 import './styles.css'
 
 const DESIGN_W = 1024
@@ -22,6 +23,18 @@ function useFitScale() {
 
 function RootApp() {
   const scale = useFitScale()
+  const [settings, setSettings] = useState(loadSettings)
+
+  const updateSettings = (partial) => {
+    setSettings((prev) => {
+      const next = { ...prev, ...partial }
+      saveSettings(next)
+      return next
+    })
+  }
+
+  const tone = KIDS_TONES[settings.toneId] || KIDS_TONES.C
+
   return (
     <div style={{
       width: '100vw', height: '100vh',
@@ -36,12 +49,14 @@ function RootApp() {
         flex: '0 0 auto',
       }}>
         <KidsApp
-          tone={KIDS_TONES.C}
-          fontSize={26}
-          mascotOn={true}
-          voiceShow={true}
+          tone={tone}
+          fontSize={settings.fontSize}
+          mascotOn={settings.mascotOn}
+          voiceShow={settings.voiceShow}
           timeOfDay="day"
           splashKey={0}
+          settings={settings}
+          onSettingsChange={updateSettings}
         />
       </div>
     </div>
