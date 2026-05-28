@@ -320,6 +320,654 @@ function ColoringActivity({ tone, subId, fontSize, onComplete, onFinish, voiceSh
 }
 
 // ─────────────────────────────────────────────────────────────
+// 1-bis) 자유 색칠놀이 — 배경 + 캔버스 자유 드로잉 (풀스펙)
+// 도구 4종(크레용/붓/마커/연필) + 지우개 + 12색 + 🌈 무지개 + 크기 3 + 투명도 3 + Undo/Redo + 스티커 + PNG 합성 저장
+// ─────────────────────────────────────────────────────────────
+const FREE_TOOLS = [
+  { id: 'crayon', name: '크레용', emoji: '🖍️' },
+  { id: 'brush',  name: '붓',    emoji: '🖌️' },
+  { id: 'marker', name: '마커',   emoji: '🖊️' },
+  { id: 'pencil', name: '연필',   emoji: '✏️' },
+  { id: 'eraser', name: '지우개', emoji: '🧽' },
+];
+const FREE_SIZES = [
+  { id: 's', label: '소', px: 10 },
+  { id: 'm', label: '중', px: 22 },
+  { id: 'l', label: '대', px: 38 },
+];
+const FREE_OPACITIES = [
+  { id: 'light', label: '연하게', value: 0.35 },
+  { id: 'mid',   label: '보통',   value: 0.7 },
+  { id: 'full',  label: '진하게', value: 1.0 },
+];
+const FREE_STICKERS = ['⭐','❤️','🌟','🌈','🌸','🦋','🐶','🐱','😊','🎈','🍎','🎀'];
+const FREE_COLOR_PALETTE = [
+  '#FF4136', // 빨
+  '#FF851B', // 주
+  '#FFDC00', // 노
+  '#2ECC40', // 초
+  '#0074D9', // 파
+  '#001F66', // 남
+  '#7B2FBE', // 보
+  '#FF69B4', // 분
+  '#8B4513', // 갈
+  '#FFFFFF', // 흰
+  '#222222', // 검
+];
+
+// hex(#RRGGBB) → HSL hue (0~360). 무채색은 0 반환.
+function hexToHue(hex) {
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex || '');
+  if (!m) return 0;
+  const r = parseInt(m[1], 16) / 255;
+  const g = parseInt(m[2], 16) / 255;
+  const b = parseInt(m[3], 16) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  if (max === min) return 0;
+  const d = max - min;
+  let h = 0;
+  if (max === r)      h = ((g - b) / d + (g < b ? 6 : 0));
+  else if (max === g) h = ((b - r) / d + 2);
+  else                h = ((r - g) / d + 4);
+  return Math.round(h * 60);
+}
+
+function applyToolStyle(ctx, s) {
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.shadowBlur = 0;
+  if (s.tool === 'eraser') {
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = s.size * 1.6;
+    return;
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.strokeStyle = s.color;
+  if (s.tool === 'crayon') {
+    ctx.lineWidth = s.size;
+    ctx.globalAlpha = Math.min(1, s.opacity * 0.75);
+  } else if (s.tool === 'brush') {
+    ctx.lineWidth = s.size * 1.45;
+    ctx.globalAlpha = Math.min(1, s.opacity * 0.95);
+    ctx.shadowColor = s.color;
+    ctx.shadowBlur = s.size * 0.45;
+  } else if (s.tool === 'marker') {
+    ctx.lineWidth = s.size * 1.05;
+    ctx.globalAlpha = Math.min(1, s.opacity);
+  } else if (s.tool === 'pencil') {
+    ctx.lineWidth = Math.max(2.5, s.size * 0.42);
+    ctx.globalAlpha = Math.min(1, s.opacity * 0.9);
+  } else {
+    ctx.lineWidth = s.size;
+    ctx.globalAlpha = s.opacity;
+  }
+}
+
+function renderStroke(ctx, stroke) {
+  applyToolStyle(ctx, stroke);
+  const pts = stroke.points;
+  if (!pts || pts.length === 0) return;
+  if (pts.length === 1) {
+    const p = pts[0];
+    if (stroke.tool === 'eraser') {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, ctx.lineWidth / 2, 0, Math.PI * 2);
+      ctx.fillStyle = '#000';
+      ctx.fill();
+    } else {
+      const prevFill = ctx.fillStyle;
+      ctx.fillStyle = stroke.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, ctx.lineWidth / 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = prevFill;
+    }
+    return;
+  }
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+  ctx.stroke();
+}
+
+function FreeColoringActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow }) {
+  const t = tone;
+  const accent = t.cat.color;
+  const colorCat = t.cat.color;
+  const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
+
+  const canvasRef = useRefA(null);
+  const containerRef = useRefA(null);
+  const drawingRef = useRefA(null);
+  const actionsRef = useRefA([]);
+
+  const [size, setSize] = useStateA({ w: 0, h: 0 });
+  const [currentId, setCurrentId] = useStateA(COLORING_ORDER.includes(subId) ? subId : 'cat');
+  const tpl = COLORING_TEMPLATES[currentId];
+  const [tool, setTool] = useStateA('crayon');
+  const [color, setColor] = useStateA(FREE_COLOR_PALETTE[0]);
+  const [brushSize, setBrushSize] = useStateA('m');
+  const [opacity, setOpacity] = useStateA('full');
+  const [actions, setActions] = useStateA([]);
+  const [redoStack, setRedoStack] = useStateA([]);
+  const [armedSticker, setArmedSticker] = useStateA(null);
+  const [showStickerPalette, setShowStickerPalette] = useStateA(false);
+  const [hue, setHue] = useStateA(0);
+  const [saved, setSaved] = useStateA(false);
+  const [doneOnce, setDoneOnce] = useStateA(false);
+
+  // actions ref 동기화 (resize 콜백에서 사용)
+  actionsRef.current = actions;
+
+  const sizePx = FREE_SIZES.find((s) => s.id === brushSize).px;
+  const opacityVal = FREE_OPACITIES.find((o) => o.id === opacity).value;
+
+  // 도안 변경 시 캔버스/액션 리셋
+  useEffectA(() => {
+    drawingRef.current = null;
+    setActions([]);
+    setRedoStack([]);
+    setArmedSticker(null);
+    setDoneOnce(false);
+  }, [currentId]);
+
+  // 컨테이너 크기 관찰 — padding-box(clientWidth/Height)를 기준으로 잡아야
+  // border 두께만큼 캔버스 CSS 크기와 백킹 스토어가 어긋나지 않는다.
+  useEffectA(() => {
+    if (!containerRef.current) return;
+    const measure = () => {
+      const el = containerRef.current;
+      if (!el) return;
+      const w = el.clientWidth;
+      const h = el.clientHeight;
+      if (w > 0 && h > 0) setSize((prev) => (prev.w === w && prev.h === h) ? prev : { w, h });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, []);
+
+  // 캔버스 백킹스토어 크기 조정
+  useEffectA(() => {
+    const cvs = canvasRef.current;
+    if (!cvs || size.w === 0) return;
+    const dpr = window.devicePixelRatio || 1;
+    cvs.width = Math.floor(size.w * dpr);
+    cvs.height = Math.floor(size.h * dpr);
+    cvs.style.width = size.w + 'px';
+    cvs.style.height = size.h + 'px';
+  }, [size.w, size.h]);
+
+  // actions/size 변경 시 전체 재렌더
+  useEffectA(() => {
+    const cvs = canvasRef.current;
+    if (!cvs || size.w === 0) return;
+    const ctx = cvs.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, cvs.width, cvs.height);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    actions.forEach((a) => { if (a.type === 'stroke') renderStroke(ctx, a.stroke); });
+  }, [actions, size.w, size.h]);
+
+  const getPt = (e) => {
+    const cvs = canvasRef.current;
+    const r = cvs.getBoundingClientRect();
+    // CSS 크기와 백킹 스토어 크기 사이의 스케일 보정 (브라우저 줌/리사이즈 직후 안전)
+    const sx = r.width  > 0 ? size.w / r.width  : 1;
+    const sy = r.height > 0 ? size.h / r.height : 1;
+    return { x: (e.clientX - r.left) * sx, y: (e.clientY - r.top) * sy };
+  };
+
+  const onPointerDown = (e) => {
+    e.preventDefault();
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
+    const p = getPt(e);
+    if (armedSticker) {
+      const sticker = { id: Date.now() + Math.random(), emoji: armedSticker, x: p.x, y: p.y, size: 64 };
+      setActions((a) => [...a, { type: 'sticker', sticker }]);
+      setRedoStack([]);
+      setArmedSticker(null);
+      if (!doneOnce) { onComplete && onComplete(1); setDoneOnce(true); }
+      return;
+    }
+    drawingRef.current = {
+      tool, color, size: sizePx, opacity: opacityVal,
+      points: [p],
+    };
+    // 즉시 점 찍기
+    const cvs = canvasRef.current;
+    const ctx = cvs.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    renderStroke(ctx, drawingRef.current);
+  };
+
+  const onPointerMove = (e) => {
+    if (!drawingRef.current) return;
+    e.preventDefault();
+    const p = getPt(e);
+    const pts = drawingRef.current.points;
+    pts.push(p);
+    if (pts.length < 2) return;
+    const cvs = canvasRef.current;
+    const ctx = cvs.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    applyToolStyle(ctx, drawingRef.current);
+    ctx.beginPath();
+    ctx.moveTo(pts[pts.length - 2].x, pts[pts.length - 2].y);
+    ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
+    ctx.stroke();
+  };
+
+  const onPointerUp = (e) => {
+    if (!drawingRef.current) return;
+    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
+    const stroke = drawingRef.current;
+    drawingRef.current = null;
+    setActions((a) => [...a, { type: 'stroke', stroke }]);
+    setRedoStack([]);
+    if (!doneOnce) { onComplete && onComplete(1); setDoneOnce(true); }
+  };
+
+  const undo = () => {
+    if (!actions.length) return;
+    const last = actions[actions.length - 1];
+    setActions(actions.slice(0, -1));
+    setRedoStack([last, ...redoStack]);
+  };
+  const redo = () => {
+    if (!redoStack.length) return;
+    const [first, ...rest] = redoStack;
+    setActions([...actions, first]);
+    setRedoStack(rest);
+  };
+  const reset = () => { setActions([]); setRedoStack([]); setArmedSticker(null); };
+
+  const onSave = async () => {
+    if (!actions.length) { setSaved(true); setTimeout(() => setSaved(false), 1400); return; }
+    try {
+      const W = 480;
+      const aspect = size.h && size.w ? (size.h / size.w) : 0.6;
+      const H = Math.round(W * aspect);
+      const sx = W / Math.max(1, size.w);
+      const sy = H / Math.max(1, size.h);
+
+      const out = document.createElement('canvas');
+      out.width = W; out.height = H;
+      const oc = out.getContext('2d');
+      // 흰 배경
+      oc.fillStyle = '#FFFFFF';
+      oc.fillRect(0, 0, W, H);
+      // 스트로크는 별도 캔버스에 합성 (지우개의 destination-out이 배경을 침범하지 않도록)
+      const sc = document.createElement('canvas');
+      sc.width = W; sc.height = H;
+      const scx = sc.getContext('2d');
+      scx.scale(sx, sy);
+      actions.forEach((a) => { if (a.type === 'stroke') renderStroke(scx, a.stroke); });
+      oc.drawImage(sc, 0, 0);
+      // 도안 윤곽선 (Path2D, viewBox 정렬은 SVG preserveAspectRatio="xMidYMid meet"와 동일하게)
+      try {
+        const parts = tpl.viewBox.trim().split(/\s+/).map(Number);
+        const vx = parts[0] || 0, vy = parts[1] || 0;
+        const vbW = parts[2] || W, vbH = parts[3] || H;
+        const scale = Math.min(W / vbW, H / vbH);
+        const dx = (W - vbW * scale) / 2 - vx * scale;
+        const dy = (H - vbH * scale) / 2 - vy * scale;
+        oc.save();
+        oc.translate(dx, dy);
+        oc.scale(scale, scale);
+        oc.strokeStyle = '#222222';
+        oc.lineJoin = 'round'; oc.lineCap = 'round';
+        oc.lineWidth = 3.5 / scale; // 화면과 시각적으로 동일한 굵기
+        tpl.parts.forEach((p) => { oc.stroke(new Path2D(p.d)); });
+        oc.restore();
+      } catch {}
+      // 스티커 (윤곽선 위)
+      actions.forEach((a) => {
+        if (a.type === 'sticker') {
+          const s = a.sticker;
+          const px = Math.floor(s.size * sx);
+          oc.font = `${px}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",serif`;
+          oc.textAlign = 'center';
+          oc.textBaseline = 'middle';
+          oc.fillText(s.emoji, s.x * sx, s.y * sy);
+        }
+      });
+      const dataURL = out.toDataURL('image/png');
+      const list = JSON.parse(localStorage.getItem('kw-gallery') || '[]');
+      list.unshift({
+        id: Date.now(),
+        type: 'free',
+        png: dataURL,
+        savedAt: new Date().toISOString(),
+      });
+      if (list.length > 24) list.length = 24;
+      localStorage.setItem('kw-gallery', JSON.stringify(list));
+      onComplete && onComplete(3);
+      onFinish && onFinish();
+    } catch {}
+    setSaved(true);
+    setTimeout(() => setSaved(false), 1400);
+  };
+
+  const stickerActions = actions.filter((a) => a.type === 'sticker');
+
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
+      {/* 타이틀 + 우측 액션 (◀뒤로/⭐별은 셸이 그려줌) */}
+      <div style={{ height: 88, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ fontSize: fontSize + 12, fontWeight: 900, color: t.text, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 36 }}>🖌️</span>자유 색칠놀이
+        </div>
+        <div style={{ position: 'absolute', top: 16, right: 130, display: 'flex', gap: 8 }}>
+          <FreeTopBtn t={t} accentBorder={accentBorder} onClick={undo}  disabled={!actions.length}    icon="↩" label="되돌리기" />
+          <FreeTopBtn t={t} accentBorder={accentBorder} onClick={redo}  disabled={!redoStack.length}  icon="↪" label="다시" />
+          <FreeTopBtn t={t} accentBorder={accentBorder} onClick={reset} disabled={!actions.length}    icon="🔄" label="초기화" />
+          <FreeTopBtn t={t} accentBorder={accentBorder} onClick={onSave} disabled={!actions.length}   icon="💾" label="저장" />
+        </div>
+      </div>
+
+      {/* 도안 가로 스크롤 (영역 색칠과 동일한 패턴) */}
+      <div style={{
+        flex: '0 0 auto',
+        padding: '0 24px 8px',
+        display: 'flex', gap: 10,
+        overflowX: 'auto', overflowY: 'hidden',
+        alignItems: 'center',
+      }}>
+        {COLORING_ORDER.map((id) => {
+          const x = COLORING_TEMPLATES[id];
+          const active = id === currentId;
+          return (
+            <button key={id} onClick={() => setCurrentId(id)}
+              onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.94)' }], { duration: 130 })}
+              style={{
+                flex: '0 0 auto',
+                width: 130, height: 64,
+                background: active ? colorCat : '#fff',
+                color: active ? t.textOnColor : t.text,
+                border: active ? (t.outline === 'none' ? 'none' : t.outline) : accentBorder,
+                borderRadius: t.cardRadius,
+                cursor: 'pointer', fontFamily: 'inherit',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                boxShadow: active ? t.shadow : t.shadowSm,
+                padding: '0 10px',
+              }}>
+              <span style={{ fontSize: 30, lineHeight: 1 }}>{x.emoji}</span>
+              <span style={{ fontSize: fontSize - 4, fontWeight: 900, whiteSpace: 'nowrap' }}>{x.name}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 메인: 캔버스 + 도구바 */}
+      <div style={{ flex: 1, display: 'flex', gap: 12, padding: '0 24px', minHeight: 0 }}>
+        <div ref={containerRef} style={{
+          flex: 1,
+          background: '#fff',
+          border: t.outline === 'none' ? 'none' : t.outline,
+          borderRadius: t.cardRadius,
+          boxShadow: t.shadowSm,
+          position: 'relative',
+          overflow: 'hidden',
+          minHeight: 0,
+        }}>
+          {/* 캔버스 (사용자 브러시) */}
+          <canvas ref={canvasRef}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+            style={{
+              position: 'absolute', inset: 0,
+              touchAction: 'none',
+              cursor: armedSticker ? 'cell' : 'crosshair',
+            }} />
+          {/* 도안 윤곽선 레이어 (캔버스 위, 항상 보임, 포인터 이벤트 차단 안 함) */}
+          <svg viewBox={tpl.viewBox} preserveAspectRatio="xMidYMid meet"
+            style={{
+              position: 'absolute', inset: 0, width: '100%', height: '100%',
+              pointerEvents: 'none',
+            }}>
+            {tpl.parts.map((p) => (
+              <path key={p.id} d={p.d}
+                fill="none"
+                stroke={t.text} strokeWidth="3.5"
+                strokeLinejoin="round" strokeLinecap="round"
+              />
+            ))}
+          </svg>
+          {/* 스티커 레이어 (DOM, 화면 표시용) */}
+          {stickerActions.map((a) => (
+            <div key={a.sticker.id} style={{
+              position: 'absolute',
+              left: a.sticker.x, top: a.sticker.y,
+              transform: 'translate(-50%, -50%)',
+              fontSize: a.sticker.size, lineHeight: 1,
+              pointerEvents: 'none', userSelect: 'none',
+              filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.18))',
+            }}>{a.sticker.emoji}</div>
+          ))}
+          {armedSticker && (
+            <div style={{
+              position: 'absolute', top: 10, left: 10,
+              background: 'rgba(0,0,0,0.78)', color: '#fff',
+              padding: '8px 14px', borderRadius: 18,
+              fontSize: fontSize - 4, fontWeight: 800,
+              pointerEvents: 'none',
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              <span style={{ fontSize: 22 }}>{armedSticker}</span>
+              <span>탭한 곳에 붙여요</span>
+            </div>
+          )}
+        </div>
+
+        {/* 우측 도구바 */}
+        <div style={{ flex: '0 0 auto', width: 88, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {FREE_TOOLS.map((tw) => {
+            const active = tool === tw.id;
+            return (
+              <button key={tw.id} onClick={() => { setTool(tw.id); setArmedSticker(null); }}
+                onPointerDown={(e) => e.currentTarget.animate([{transform:'scale(1)'},{transform:'scale(0.92)'}],{duration:130})}
+                style={{
+                  flex: 1, minHeight: 0,
+                  background: active ? accent : '#fff',
+                  color: active ? t.textOnColor : t.text,
+                  border: active ? (t.outline === 'none' ? 'none' : t.outline) : accentBorder,
+                  borderRadius: 18,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
+                  boxShadow: active ? t.shadow : t.shadowSm,
+                  padding: 4,
+                  transform: active ? 'scale(1.04)' : 'scale(1)',
+                  transition: 'transform 0.12s, background 0.15s',
+                }}>
+                <span style={{ fontSize: 28, lineHeight: 1 }}>{tw.emoji}</span>
+                <span style={{ fontSize: fontSize - 12, fontWeight: 900 }}>{tw.name}</span>
+              </button>
+            );
+          })}
+          <button onClick={() => setShowStickerPalette((v) => !v)}
+            onPointerDown={(e) => e.currentTarget.animate([{transform:'scale(1)'},{transform:'scale(0.92)'}],{duration:130})}
+            style={{
+              flex: 1, minHeight: 0,
+              background: showStickerPalette ? accent : '#fff',
+              color: showStickerPalette ? t.textOnColor : t.text,
+              border: showStickerPalette ? (t.outline === 'none' ? 'none' : t.outline) : accentBorder,
+              borderRadius: 18,
+              cursor: 'pointer', fontFamily: 'inherit',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
+              boxShadow: showStickerPalette ? t.shadow : t.shadowSm,
+              padding: 4,
+            }}>
+            <span style={{ fontSize: 28, lineHeight: 1 }}>✨</span>
+            <span style={{ fontSize: fontSize - 12, fontWeight: 900 }}>스티커</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 스티커 팔레트 (토글) */}
+      {showStickerPalette && (
+        <div style={{
+          padding: '8px 24px 0',
+          display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center',
+        }}>
+          {FREE_STICKERS.map((s) => {
+            const active = armedSticker === s;
+            return (
+              <button key={s} onClick={() => setArmedSticker(active ? null : s)}
+                onPointerDown={(e) => e.currentTarget.animate([{transform:'scale(1)'},{transform:'scale(0.88)'}],{duration:130})}
+                style={{
+                  width: 52, height: 52, borderRadius: 14,
+                  background: active ? accent : '#fff',
+                  border: active ? `3px solid ${t.text}` : `2px solid rgba(0,0,0,0.12)`,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  fontSize: 30, lineHeight: 1,
+                  boxShadow: active ? t.shadow : t.shadowSm,
+                  padding: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>{s}</button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* 하단 컨트롤 */}
+      <div style={{ padding: '8px 24px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {/* 12색 팔레트 + "지금 색" 미리보기 */}
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
+          {FREE_COLOR_PALETTE.map((c) => {
+            const active = color.toLowerCase() === c.toLowerCase();
+            const isWhite = c === '#FFFFFF';
+            return (
+              <button key={c} onClick={() => { setColor(c); setHue(hexToHue(c)); }}
+                onPointerDown={(e) => e.currentTarget.animate([{transform:'scale(1)'},{transform:'scale(0.88)'}],{duration:130})}
+                aria-label={`색상 ${c}`}
+                style={{
+                  width: 44, height: 44, borderRadius: 22,
+                  background: c,
+                  border: active ? `4px solid ${t.text}` : isWhite ? `2px dashed rgba(0,0,0,0.35)` : `2px solid rgba(0,0,0,0.10)`,
+                  boxShadow: active ? `0 0 0 4px ${t.accent}, ${t.shadow}` : t.shadowSm,
+                  cursor: 'pointer', padding: 0, fontFamily: 'inherit',
+                  transform: active ? 'translateY(-4px)' : 'translateY(0)',
+                  transition: 'transform 0.12s',
+                }} />
+            );
+          })}
+          {/* "지금 색" 큰 미리보기 — 12색이든 슬라이더든 현재 사용 색을 표시 */}
+          <div aria-label="현재 색"
+            style={{
+              marginLeft: 8,
+              width: 56, height: 44, borderRadius: 14,
+              background: color,
+              border: `3px solid ${t.text}`,
+              boxShadow: t.shadowSm,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 18, fontWeight: 900, color: '#fff',
+              textShadow: '0 1px 2px rgba(0,0,0,0.45)',
+            }}>색</div>
+        </div>
+        {/* 무지개 슬라이더 — 상시 노출, 무지개 배경, 큰 thumb */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 4px' }}>
+          <span style={{ fontSize: 22, lineHeight: 1 }}>🌈</span>
+          <input type="range" min="0" max="360" value={hue}
+            className="kw-rainbow-slider"
+            onChange={(e) => { const h = Number(e.target.value); setHue(h); setColor(`hsl(${h}, 80%, 55%)`); }}
+            style={{ flex: 1 }} />
+        </div>
+        {/* 크기 + 투명도 */}
+        <div style={{ display: 'flex', gap: 18, alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <span style={{ fontSize: fontSize - 6, fontWeight: 900, color: t.textMuted, marginRight: 4 }}>크기</span>
+            {FREE_SIZES.map((s) => {
+              const active = brushSize === s.id;
+              const dotPx = s.id === 's' ? 10 : s.id === 'm' ? 18 : 28;
+              return (
+                <button key={s.id} onClick={() => setBrushSize(s.id)}
+                  onPointerDown={(e) => e.currentTarget.animate([{transform:'scale(1)'},{transform:'scale(0.9)'}],{duration:120})}
+                  aria-label={`크기 ${s.label}`}
+                  style={{
+                    width: 56, height: 44, borderRadius: 14,
+                    background: active ? accent : '#fff',
+                    border: active ? (t.outline === 'none' ? 'none' : t.outline) : accentBorder,
+                    cursor: 'pointer', fontFamily: 'inherit',
+                    boxShadow: active ? t.shadow : t.shadowSm,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: 0,
+                  }}>
+                  <span style={{
+                    width: dotPx, height: dotPx, borderRadius: dotPx / 2,
+                    background: active ? '#fff' : t.text, display: 'inline-block',
+                  }} />
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <span style={{ fontSize: fontSize - 6, fontWeight: 900, color: t.textMuted, marginRight: 4 }}>투명도</span>
+            {FREE_OPACITIES.map((o) => {
+              const active = opacity === o.id;
+              return (
+                <button key={o.id} onClick={() => setOpacity(o.id)}
+                  onPointerDown={(e) => e.currentTarget.animate([{transform:'scale(1)'},{transform:'scale(0.92)'}],{duration:120})}
+                  style={{
+                    minWidth: 70, height: 44, borderRadius: 14,
+                    background: active ? accent : '#fff',
+                    color: active ? t.textOnColor : t.text,
+                    border: active ? (t.outline === 'none' ? 'none' : t.outline) : accentBorder,
+                    cursor: 'pointer', fontFamily: 'inherit',
+                    fontSize: fontSize - 6, fontWeight: 900,
+                    boxShadow: active ? t.shadow : t.shadowSm,
+                    padding: '0 10px',
+                  }}>{o.label}</button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* 저장 토스트 */}
+      {saved && (
+        <div style={{
+          position: 'absolute', top: '42%', left: '50%', transform: 'translate(-50%, -50%)',
+          background: 'rgba(0,0,0,0.82)', color: '#fff',
+          padding: '18px 32px', borderRadius: 32,
+          fontSize: fontSize + 4, fontWeight: 900,
+          display: 'flex', alignItems: 'center', gap: 12,
+          animation: 'kw-toast 1.4s ease both',
+          pointerEvents: 'none', zIndex: 50,
+        }}>
+          <span style={{ fontSize: 38 }}>💾</span>저장됐어!
+        </div>
+      )}
+
+      <VoiceGuide tone={t} show={voiceShow} text="도구와 색을 골라 자유롭게 그려봐" fontSize={fontSize - 4} />
+    </div>
+  );
+}
+
+function FreeTopBtn({ t, accentBorder, onClick, disabled, icon, label }) {
+  return (
+    <button onClick={onClick} aria-label={label} disabled={disabled}
+      onPointerDown={(e) => { if (!disabled) e.currentTarget.animate([{transform:'scale(1)'},{transform:'scale(0.92)'}],{duration:130}); }}
+      style={{
+        width: 56, height: 56, borderRadius: 28,
+        background: '#fff', border: accentBorder,
+        cursor: disabled ? 'default' : 'pointer', fontSize: 24, fontFamily: 'inherit',
+        boxShadow: disabled ? 'none' : t.shadowSm, color: t.text,
+        opacity: disabled ? 0.4 : 1,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>{icon}</button>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
 // 2) 한글 — 자/모 학습 화면 (자음 익히기 Lv.1 / 모음 익히기 Lv.1)
 // ─────────────────────────────────────────────────────────────
 const CONSONANTS = [
@@ -1818,7 +2466,10 @@ function CodingActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
 // 활동 라우터
 // ─────────────────────────────────────────────────────────────
 function Activity({ tone, cat, sub, fontSize, onComplete, onFinish, voiceShow }) {
-  if (cat.id === 'color')  return <ColoringActivity tone={tone} subId={sub?.id || 'apple'} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
+  if (cat.id === 'color') {
+    if (sub?.id === 'free') return <FreeColoringActivity tone={tone} subId={sub?.tplId} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
+    return <ColoringActivity tone={tone} subId={sub?.id || 'cat'} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
+  }
   if (cat.id === 'hangul') return <HangulActivity   tone={tone} subId={sub?.id || 'consonants'} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
   if (cat.id === 'math')   return (sub?.id === 'add5' || sub?.id === 'add10')
     ? <AdditionActivity tone={tone} subId={sub?.id || 'add5'} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />

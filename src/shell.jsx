@@ -876,7 +876,8 @@ function GalleryScreen({ tone, fontSize, onPickColor }) {
 
 function GalleryThumb({ item, tone, fontSize, onRemove }) {
   const t = tone;
-  const tpl = (COLORING_TEMPLATES && COLORING_TEMPLATES[item.tplId]) || null;
+  const isFree = item.type === 'free';
+  const tpl = !isFree ? ((COLORING_TEMPLATES && COLORING_TEMPLATES[item.tplId]) || null) : null;
   const [confirming, setConfirming] = useState(false);
   const d = new Date(item.savedAt);
   const dateStr = `${d.getMonth() + 1}/${d.getDate()}`;
@@ -892,7 +893,7 @@ function GalleryThumb({ item, tone, fontSize, onRemove }) {
       boxShadow: t.shadowSm,
       display: 'flex', flexDirection: 'column', gap: 8,
     }}>
-      {/* SVG 썸네일 */}
+      {/* 썸네일 */}
       <div style={{
         background: '#FAFAFA', borderRadius: t.cardRadius - 6,
         aspectRatio: '1 / 1',
@@ -900,7 +901,9 @@ function GalleryThumb({ item, tone, fontSize, onRemove }) {
         padding: 8,
         overflow: 'hidden',
       }}>
-        {tpl ? (
+        {isFree ? (
+          <img src={item.png} alt="자유 그림" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+        ) : tpl ? (
           <svg viewBox={tpl.viewBox} style={{ width: '100%', height: '100%' }} preserveAspectRatio="xMidYMid meet">
             {tpl.parts.map((p) => (
               <path key={p.id} d={p.d}
@@ -919,9 +922,9 @@ function GalleryThumb({ item, tone, fontSize, onRemove }) {
       {/* 메타 정보 */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, padding: '0 2px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-          <span style={{ fontSize: 18, lineHeight: 1 }}>{tpl ? tpl.emoji : '🎨'}</span>
+          <span style={{ fontSize: 18, lineHeight: 1 }}>{isFree ? '🖌️' : (tpl ? tpl.emoji : '🎨')}</span>
           <span style={{ fontSize: fontSize - 6, fontWeight: 800, color: t.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {tpl ? tpl.name : '작품'}
+            {isFree ? '자유 그림' : (tpl ? tpl.name : '작품')}
           </span>
         </div>
         <span style={{ fontSize: fontSize - 8, fontWeight: 700, color: t.textMuted, fontVariantNumeric: 'tabular-nums', flex: '0 0 auto' }}>{dateStr}</span>

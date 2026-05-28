@@ -833,8 +833,8 @@ function Place({ place, tone, tier, stars, recommended, walking, onPick }) {
   const color = t.cat[place.catId];
   const labelBg = '#fff';
 
-  // 진행도에 따른 시각화
-  const dim = tier === 0;
+  // 진행도에 따른 시각화 (dim은 비활성화 — 첫 진입부터 풀 컬러)
+  const dim = false;
   const flowered = tier >= 2;
   const sparkly = tier >= 3;
 

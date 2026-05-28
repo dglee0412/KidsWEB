@@ -36,7 +36,7 @@ function KidsApp({ tone, fontSize, mascotOn, voiceShow, timeOfDay, splashKey, se
   const pickColorMenu = (item) => {
     setSessionStars(0);
     if (item.id === 'fill') setRoute((r) => ({ screen: 'activity', cat: r.cat, sub: { id: 'cat' } })); // 영역 색칠 → 바로 활동 (첫 도안)
-    else if (item.id === 'free') setRoute((r) => ({ screen: 'free-bg', cat: r.cat }));
+    else if (item.id === 'free') setRoute((r) => ({ screen: 'activity', cat: r.cat, sub: { id: 'free' } })); // 자유 색칠 → 흰 캔버스로 직행
     else if (item.id === 'gallery') setRoute((r) => ({ screen: 'gallery', cat: r.cat }));
     else if (item.id === 'locked') setRoute((r) => ({ screen: 'locked', cat: r.cat }));
   };
@@ -45,8 +45,8 @@ function KidsApp({ tone, fontSize, mascotOn, voiceShow, timeOfDay, splashKey, se
   const back = () => {
     if (route.screen === 'activity') {
       if (route.cat.id === 'color') {
-        // 자유색칠 → 배경 선택, 영역색칠(템플릿 sub) → 색칠 메뉴
-        setRoute({ screen: route.sub && route.sub.id === 'free' ? 'free-bg' : 'color-menu', cat: route.cat });
+        // 자유/영역 색칠 모두 색칠 메뉴로 복귀
+        setRoute({ screen: 'color-menu', cat: route.cat });
       } else {
         setRoute(route.cat.hasSub ? { screen: 'submenu', cat: route.cat } : { screen: 'home' });
       }
