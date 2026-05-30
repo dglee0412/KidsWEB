@@ -25,7 +25,21 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // 음성(작은 mp3)은 프리캐시, BGM(큰 mp3)은 제외하고 런타임 캐싱으로 처리
         globPatterns: ['**/*.{js,css,html,png,woff2,mp3}'],
+        globIgnores: ['**/bgm/*.mp3'],
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) => url.pathname.startsWith('/bgm/'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'kw-bgm',
+              expiration: { maxEntries: 6, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] },
+              rangeRequests: true,
+            },
+          },
+        ],
       },
     }),
   ],
