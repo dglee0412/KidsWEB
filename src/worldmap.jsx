@@ -5,6 +5,7 @@
 
 import React from 'react'
 import { KIDS_CATEGORIES } from './themes.jsx'
+import { unlockAudio, playSfx, playPlaceVoice, playBgm, stopBgm } from './lib/audio.js'
 
 const { useState: useStateMap, useEffect: useEffectMap, useRef: useRefMap, useMemo: useMemoMap, useCallback: useCallbackMap } = React;
 
@@ -162,6 +163,21 @@ function WorldMapHome({ tone, fontSize, mascotOn, onPick, stars, onSettings, tim
     setPageBadgeKey((k) => k + 1);
   }, [currentPage]);
 
+  // 계절별 배경음악 — 현재 보이는 계절로 전환
+  useEffectMap(() => {
+    playBgm(SEASON_PAGES[currentPage].id);
+  }, [currentPage]);
+
+  // 홈 마운트: autoplay 차단 대비 첫 포인터 입력에 재생 보장. 언마운트(활동 진입) 시 정지.
+  useEffectMap(() => {
+    const kick = () => playBgm(SEASON_PAGES[currentPage].id);
+    window.addEventListener('pointerdown', kick, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', kick);
+      stopBgm();
+    };
+  }, []);
+
   const goToPage = (i) => {
     const target = SEASON_PAGES[Math.max(0, Math.min(SEASON_PAGES.length - 1, i))];
     scrollRef.current?.scrollTo({ left: target.snapX, behavior: 'smooth' });
@@ -177,6 +193,10 @@ function WorldMapHome({ tone, fontSize, mascotOn, onPick, stars, onSettings, tim
   const pickPlace = (place) => {
     if (walking) return;
     setBubbleHidden(true);
+    // 선택 효과음 + 장소 이름 음성(곰곰이가 걷는 동안 재생; 화면 진입은 기존 타이밍 유지)
+    unlockAudio();
+    playSfx('select');
+    playPlaceVoice(place.catId);
     // 곰곰이가 장소 왼편으로 걸어감
     const targetX = place.x - 70;
     // 이동 거리에 비례한 시간 → 거리와 무관하게 항상 같은 속도

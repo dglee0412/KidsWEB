@@ -8,6 +8,7 @@ import { BackButton, StarCounter, SubmenuScreen, PlaceholderScreen, ColorMenuScr
 import { WorldMapHome } from './worldmap.jsx'
 import { Activity } from './activities.jsx'
 import { loadStars, saveStars } from './lib/storage.js'
+import { setVolumes, unlockAudio, preloadPlaceVoices, playSfx } from './lib/audio.js'
 
 const { useState: useStateApp, useEffect: useEffectApp, useRef: useRefApp } = React;
 
@@ -17,6 +18,17 @@ function KidsApp({ tone, fontSize, mascotOn, voiceShow, timeOfDay, splashKey, se
   const [sessionStars, setSessionStars] = useStateApp(0);
   const [popKey, setPopKey] = useStateApp(0);
   const [reward, setReward] = useStateApp(null); // {n} 일시적 별 획득 오버레이
+
+  // 오디오 초기화: 부모설정 음량을 오디오에 반영 + 첫 제스처에서 unlock/preload
+  useEffectApp(() => {
+    try {
+      const ps = { volBg: 50, volSfx: 70, volVoice: 70, ...JSON.parse(localStorage.getItem('kw-parent-settings') || '{}') };
+      setVolumes({ sfx: ps.volSfx, voice: ps.volVoice, bgm: ps.volBg });
+    } catch {}
+    const onFirstGesture = () => { unlockAudio(); preloadPlaceVoices(); };
+    window.addEventListener('pointerdown', onFirstGesture, { once: true });
+    return () => window.removeEventListener('pointerdown', onFirstGesture);
+  }, []);
 
   // 스플래시: splashKey가 바뀔 때마다 1.5s 표시 → 300ms 페이드아웃
   const [splashPhase, setSplashPhase] = useStateApp('show'); // 'show' | 'fade' | 'done'
@@ -58,6 +70,7 @@ function KidsApp({ tone, fontSize, mascotOn, voiceShow, timeOfDay, splashKey, se
   };
 
   const onActivityReward = (n) => {
+    playSfx(n >= 3 ? 'star' : 'correct');
     setStars((s) => { const next = s + n; saveStars(next); return next; });
     setSessionStars((s) => s + n);
     setPopKey((k) => k + 1);

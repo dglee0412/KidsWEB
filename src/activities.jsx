@@ -4,6 +4,7 @@
 
 import React from 'react'
 import { VoiceGuide, PlaceholderScreen } from './shell.jsx'
+import { playSfx, playTone, playToolVoice, startDraw, drawTick, stopDraw } from './lib/audio.js'
 
 const { useState: useStateA, useEffect: useEffectA, useRef: useRefA, useMemo: useMemoA, useCallback: useCallbackA } = React;
 
@@ -531,6 +532,7 @@ function FreeColoringActivity({ tone, subId, fontSize, onComplete, onFinish, voi
       setActions((a) => [...a, { type: 'sticker', sticker }]);
       setRedoStack([]);
       setArmedSticker(null);
+      playSfx('sticker');
       if (!doneOnce) { onComplete && onComplete(1); setDoneOnce(true); }
       return;
     }
@@ -544,6 +546,7 @@ function FreeColoringActivity({ tone, subId, fontSize, onComplete, onFinish, voi
     const dpr = window.devicePixelRatio || 1;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     renderStroke(ctx, drawingRef.current);
+    startDraw(tool === 'eraser' ? 'erase' : 'draw');
   };
 
   const onPointerMove = (e) => {
@@ -562,11 +565,14 @@ function FreeColoringActivity({ tone, subId, fontSize, onComplete, onFinish, voi
     ctx.moveTo(pts[pts.length - 2].x, pts[pts.length - 2].y);
     ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
     ctx.stroke();
+    const a = pts[pts.length - 2], b = pts[pts.length - 1];
+    drawTick(Math.hypot(b.x - a.x, b.y - a.y));
   };
 
   const onPointerUp = (e) => {
     if (!drawingRef.current) return;
     try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
+    stopDraw();
     const stroke = drawingRef.current;
     drawingRef.current = null;
     setActions((a) => [...a, { type: 'stroke', stroke }]);
@@ -773,7 +779,7 @@ function FreeColoringActivity({ tone, subId, fontSize, onComplete, onFinish, voi
           {FREE_TOOLS.map((tw) => {
             const active = tool === tw.id;
             return (
-              <button key={tw.id} onClick={() => { setTool(tw.id); setArmedSticker(null); }}
+              <button key={tw.id} onClick={() => { setTool(tw.id); setArmedSticker(null); playToolVoice(tw.id); }}
                 onPointerDown={(e) => e.currentTarget.animate([{transform:'scale(1)'},{transform:'scale(0.92)'}],{duration:130})}
                 style={{
                   flex: 1, minHeight: 0,
@@ -793,7 +799,7 @@ function FreeColoringActivity({ tone, subId, fontSize, onComplete, onFinish, voi
               </button>
             );
           })}
-          <button onClick={() => setShowStickerPalette((v) => !v)}
+          <button onClick={() => setShowStickerPalette((v) => { const nv = !v; if (nv) playToolVoice('sticker'); return nv; })}
             onPointerDown={(e) => e.currentTarget.animate([{transform:'scale(1)'},{transform:'scale(0.92)'}],{duration:130})}
             style={{
               flex: 1, minHeight: 0,
@@ -821,7 +827,7 @@ function FreeColoringActivity({ tone, subId, fontSize, onComplete, onFinish, voi
           {FREE_STICKERS.map((s) => {
             const active = armedSticker === s;
             return (
-              <button key={s} onClick={() => setArmedSticker(active ? null : s)}
+              <button key={s} onClick={() => { setArmedSticker(active ? null : s); playSfx('select'); }}
                 onPointerDown={(e) => e.currentTarget.animate([{transform:'scale(1)'},{transform:'scale(0.88)'}],{duration:130})}
                 style={{
                   width: 52, height: 52, borderRadius: 14,
@@ -1259,6 +1265,7 @@ function AdditionActivity({ tone, subId, fontSize, onComplete, onFinish, voiceSh
         }
       }, 1100);
     } else {
+      playSfx('wrong');
       setStatus('wrong');
       setPicked(n);
       setTimeout(() => { setStatus('q'); setPicked(null); }, 700);
@@ -1474,6 +1481,7 @@ function MathActivity({ tone, subId, fontSize, onComplete, voiceShow }) {
       setStreak((s) => s + 1);
       setTimeout(() => { setRound(newRound()); setStatus('q'); }, 1200);
     } else {
+      playSfx('wrong');
       setStatus('wrong');
       setTimeout(() => setStatus('q'), 700);
     }
@@ -1582,21 +1590,8 @@ function MusicActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow 
     setPattern([]); setStep(0); setSongId(null); setFeedback(null);
   }, [mode]);
 
-  const playSound = (freq) => {
-    try {
-      if (!acRef.current) acRef.current = new (window.AudioContext || window.webkitAudioContext)();
-      const ac = acRef.current;
-      const o = ac.createOscillator();
-      const g = ac.createGain();
-      o.type = 'triangle';
-      o.frequency.value = freq;
-      g.gain.setValueAtTime(0.0001, ac.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.4, ac.currentTime + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + 0.6);
-      o.connect(g); g.connect(ac.destination);
-      o.start(); o.stop(ac.currentTime + 0.7);
-    } catch {}
-  };
+  // 건반음은 공유 오디오 모듈 경유 → 효과음 음량 슬라이더 적용 + 단일 AudioContext
+  const playSound = (freq) => playTone(freq);
 
   const tap = (note) => {
     if (previewing.current) return;
@@ -1633,6 +1628,7 @@ function MusicActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow 
           setTimeout(() => setFeedback((f) => (f === 'ok' ? null : f)), 220);
         }
       } else {
+        playSfx('wrong');
         setFeedback('wrong');
         setTimeout(() => setFeedback((f) => (f === 'wrong' ? null : f)), 420);
       }
@@ -1975,12 +1971,14 @@ function MemoryActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow
       const [a, b] = nf;
       if (cards[a].e === cards[b].e) {
         // 정답
+        playSfx('correct');
         setTimeout(() => {
           setCards((cs) => cs.map((c, idx) => (idx === a || idx === b) ? { ...c, matched: true } : c));
           setFlipped([]); setLocked(false);
         }, 650);
       } else {
         // 오답 — 흔들리고 뒤집기
+        playSfx('wrong');
         setMissFlash([a, b]);
         setTimeout(() => {
           setFlipped([]); setLocked(false); setMissFlash(null);

@@ -5,6 +5,7 @@
 import React from 'react'
 import { KIDS_CATEGORIES } from './themes.jsx'
 import { COLORING_TEMPLATES } from './activities.jsx'
+import { setVolumes } from './lib/audio.js'
 
 const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
@@ -987,6 +988,8 @@ function ParentSettings({ tone, onClose, settings: appSettings, onSettingsChange
   const save = (next) => {
     setSettings(next);
     try { localStorage.setItem('kw-parent-settings', JSON.stringify(next)); } catch {}
+    // 음량 슬라이더 → 실제 오디오 반영(실시간). 배경음은 BGM 미구현이라 현재 무동작.
+    setVolumes({ sfx: next.volSfx, voice: next.volVoice, bgm: next.volBg });
   };
   const set = (k, v) => save({ ...settings, [k]: v });
   const toggleCat = (id) => save({ ...settings, catEnabled: { ...settings.catEnabled, [id]: !settings.catEnabled[id] } });

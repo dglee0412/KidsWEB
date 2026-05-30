@@ -50,7 +50,8 @@ function RootApp() {
     <div style={{
       width: '100vw', height: '100vh',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: '#1c1b22', overflow: 'hidden',
+      // 4:3 캔버스가 와이드 화면에 남기는 양옆 여백을 검은 띠 대신 테마 배경색으로 채움
+      background: tone.bg || tone.surface || '#1c1b22', overflow: 'hidden',
     }}>
       <div style={{
         width: DESIGN_W, height: DESIGN_H,
