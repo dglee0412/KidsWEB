@@ -133,6 +133,89 @@ export function playTone(freq, { dur = 0.7, peak = 0.4, type = 'triangle' } = {}
   } catch {}
 }
 
+// 드럼 합성음 — kick/snare/hihat/tom 4종, sfxGain 라우팅
+export function playDrum(type) {
+  try {
+    ensureCtx();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume();
+    const t0 = ctx.currentTime;
+    if (type === 'kick') {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(140, t0);
+      o.frequency.exponentialRampToValueAtTime(40, t0 + 0.18);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.7, t0 + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.22);
+      o.connect(g); g.connect(sfxGain);
+      o.start(t0); o.stop(t0 + 0.25);
+    } else if (type === 'snare') {
+      // 노이즈 + 짧은 사각파
+      const buf = getNoiseBuffer();
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      const hp = ctx.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 1500;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.45, t0 + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.18);
+      src.connect(hp); hp.connect(g); g.connect(sfxGain);
+      src.start(t0); src.stop(t0 + 0.2);
+      // tonal 컴포넌트
+      const o = ctx.createOscillator();
+      const og = ctx.createGain();
+      o.type = 'triangle';
+      o.frequency.value = 220;
+      og.gain.setValueAtTime(0.0001, t0);
+      og.gain.exponentialRampToValueAtTime(0.25, t0 + 0.005);
+      og.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.12);
+      o.connect(og); og.connect(sfxGain);
+      o.start(t0); o.stop(t0 + 0.14);
+    } else if (type === 'hihat') {
+      const buf = getNoiseBuffer();
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      const hp = ctx.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 5000;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.32, t0 + 0.003);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.08);
+      src.connect(hp); hp.connect(g); g.connect(sfxGain);
+      src.start(t0); src.stop(t0 + 0.1);
+    } else if (type === 'tom') {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(220, t0);
+      o.frequency.exponentialRampToValueAtTime(110, t0 + 0.2);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.6, t0 + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.28);
+      o.connect(g); g.connect(sfxGain);
+      o.start(t0); o.stop(t0 + 0.3);
+    } else if (type === 'cymbal') {
+      const buf = getNoiseBuffer();
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      const hp = ctx.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 6500;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.35, t0 + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.55);
+      src.connect(hp); hp.connect(g); g.connect(sfxGain);
+      src.start(t0); src.stop(t0 + 0.6);
+    }
+  } catch {}
+}
+
 // ── 그리기/지우기 합성음 (연속) ──────────────────────────────
 let noiseBuffer = null;
 function getNoiseBuffer() {
