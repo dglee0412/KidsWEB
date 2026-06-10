@@ -3259,6 +3259,7 @@ function XyloActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
   );
 }
 
+// onFinish는 의도적으로 사용 안 함 — 음악은 연속 연주(뒤로가기로만 종료)
 function MusicActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow }) {
   const t = tone;
   const color = t.cat.music;
@@ -3269,13 +3270,17 @@ function MusicActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow 
   const follow = useFollowPattern();
   const previewing = useRefA(false);
   const timersRef = useRefA([]);
+  const previewAbortRef = useRefA(false);
   const addTimer = (id) => { timersRef.current.push(id); };
 
   // 언마운트 시 예약 타이머 정리
   useEffectA(() => () => { timersRef.current.forEach((id) => clearTimeout(id)); }, []);
+  useEffectA(() => () => { previewAbortRef.current = true; }, []);
 
-  // 모드 변경 시 초기화
+  // 모드 변경 시 초기화 — 예약된 자동연속 타이머도 취소(모드 전환 레이스 방지)
   useEffectA(() => {
+    timersRef.current.forEach((id) => clearTimeout(id));
+    timersRef.current = [];
     follow.setFixed([]); setSongId(null);
   }, [mode]);
 
@@ -3326,13 +3331,13 @@ function MusicActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow 
     }
   };
 
-  const newFollow = () => startNewFollow();
   const selectSong = (s) => { setSongId(s.id); follow.setFixed(s.notes); };
   const replayPattern = () => follow.replay();
   const preview = async () => {
     if (previewing.current || !follow.pattern.length) return;
     previewing.current = true; follow.replay();
     for (let i = 0; i < follow.pattern.length; i++) {
+      if (previewAbortRef.current) break;
       const n = PIANO_WHITE.find((w) => w.id === follow.pattern[i]);
       if (n) {
         setPressed(n.id); playSound(n.freq);
@@ -3434,7 +3439,7 @@ function MusicActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow 
                     ))}
                   </div>
                 ) : (
-                  <button onClick={newFollow}
+                  <button onClick={startNewFollow}
                     onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.94)' }], { duration: 130 })}
                     style={{
                       height: 42, padding: '0 18px', borderRadius: 21,
