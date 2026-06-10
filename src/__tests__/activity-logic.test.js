@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { resolveMove, isSolvable, CODING_LEVELS, CODING_GRID } from '../activities.jsx'
+import { nextFollowState } from '../activities.jsx'
 
 describe('resolveMove', () => {
   const obstacles = [{ x: 2, y: 2 }]
@@ -37,5 +38,18 @@ describe('CODING_LEVELS', () => {
       expect(onObs(lv.start)).toBe(false)
       expect(onObs(lv.goal)).toBe(false)
     }
+  })
+})
+
+describe('nextFollowState', () => {
+  const pat = ['C', 'D', 'E']
+  it('맞는 입력이면 step 증가 + ok', () => {
+    expect(nextFollowState(pat, 0, 'C')).toEqual({ step: 1, result: 'ok' })
+  })
+  it('마지막 입력이 맞으면 done', () => {
+    expect(nextFollowState(pat, 2, 'E')).toEqual({ step: 3, result: 'done' })
+  })
+  it('틀리면 step 유지 + wrong', () => {
+    expect(nextFollowState(pat, 1, 'C')).toEqual({ step: 1, result: 'wrong' })
   })
 })
