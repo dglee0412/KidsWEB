@@ -17,10 +17,19 @@ const COLOR_PALETTE = [
   '#AA96DA','#DDA0DD','#F38181','#FFFFFF',
 ];
 
+// 색칠 도안 카테고리
+const COLORING_CATEGORIES = [
+  { id: 'animal',    name: '동물',    emoji: '🐾' },
+  { id: 'vehicle',   name: '탈것',    emoji: '🚗' },
+  { id: 'food',      name: '음식',    emoji: '🍎' },
+  { id: 'nature',    name: '자연',    emoji: '🌳' },
+  { id: 'character', name: '캐릭터',  emoji: '👾' },
+];
+
 // 색칠 도안 — 각 영역(path)을 따로 채색
 const COLORING_TEMPLATES = {
   cat: {
-    name: '고양이', emoji: '🐱', viewBox: '0 0 400 420',
+    name: '고양이', emoji: '🐱', viewBox: '0 0 400 420', category: 'animal',
     parts: [
       { id: 'body',     d: 'M 200 340 m -140 0 a 140 70 0 1 0 280 0 a 140 70 0 1 0 -280 0' },
       { id: 'tail',     d: 'M 340 330 Q 380 280 360 220 Q 350 195 365 188 L 358 175 Q 338 180 340 220 Q 342 280 322 318 Z' },
@@ -36,7 +45,7 @@ const COLORING_TEMPLATES = {
     ],
   },
   dog: {
-    name: '강아지', emoji: '🐶', viewBox: '0 0 400 440',
+    name: '강아지', emoji: '🐶', viewBox: '0 0 400 440', category: 'animal',
     parts: [
       { id: 'body',  d: 'M 200 340 m -150 0 a 150 75 0 1 0 300 0 a 150 75 0 1 0 -300 0' },
       { id: 'tail',  d: 'M 55 320 Q 18 280 28 230 L 50 235 Q 46 275 72 312 Z' },
@@ -53,7 +62,7 @@ const COLORING_TEMPLATES = {
     ],
   },
   car: {
-    name: '자동차', emoji: '🚗', viewBox: '0 0 480 320',
+    name: '자동차', emoji: '🚗', viewBox: '0 0 480 320', category: 'vehicle',
     parts: [
       { id: 'body',     d: 'M 50 230 L 50 195 Q 60 175 90 175 L 380 175 Q 420 175 440 195 L 440 240 L 50 240 Z' },
       { id: 'cabin',    d: 'M 130 175 L 170 100 Q 185 90 210 90 L 320 90 Q 345 90 360 100 L 395 175 Z' },
@@ -68,7 +77,7 @@ const COLORING_TEMPLATES = {
     ],
   },
   sunflower: {
-    name: '해바라기', emoji: '🌻', viewBox: '0 0 400 480',
+    name: '해바라기', emoji: '🌻', viewBox: '0 0 400 480', category: 'nature',
     parts: [
       { id: 'stem',    d: 'M 192 250 L 192 460 L 208 460 L 208 250 Z' },
       { id: 'leaf-l',  d: 'M 200 380 Q 130 360 100 320 Q 130 340 200 360 Z' },
@@ -85,7 +94,7 @@ const COLORING_TEMPLATES = {
     ],
   },
   apple: {
-    name: '사과', emoji: '🍎', viewBox: '0 0 400 420',
+    name: '사과', emoji: '🍎', viewBox: '0 0 400 420', category: 'food',
     parts: [
       { id: 'body',      d: 'M 200 80 C 110 80 60 160 70 240 C 80 320 140 350 200 350 C 260 350 320 320 330 240 C 340 160 290 80 200 80 Z' },
       { id: 'leaf-l',    d: 'M 200 80 C 180 50 150 30 130 35 C 150 60 170 80 200 80 Z' },
@@ -96,19 +105,301 @@ const COLORING_TEMPLATES = {
       { id: 'highlight', d: 'M 196 102 C 176 108 168 130 178 144 C 192 130 200 112 196 102 Z' },
     ],
   },
+  // ── 동물 ───────────────────────────────────────────────
+  rabbit: {
+    name: '토끼', emoji: '🐰', viewBox: '0 0 400 480', category: 'animal',
+    parts: [
+      { id: 'body',  d: 'M 200 360 m -110 0 a 110 80 0 1 0 220 0 a 110 80 0 1 0 -220 0' },
+      { id: 'ear-l', d: 'M 145 100 Q 130 25 168 18 Q 180 60 178 130 Z' },
+      { id: 'ear-r', d: 'M 255 100 Q 270 25 232 18 Q 220 60 222 130 Z' },
+      { id: 'ear-in-l', d: 'M 155 110 Q 150 50 168 45 Q 172 70 170 120 Z' },
+      { id: 'ear-in-r', d: 'M 245 110 Q 250 50 232 45 Q 228 70 230 120 Z' },
+      { id: 'head',  d: 'M 200 220 m -90 0 a 90 90 0 1 0 180 0 a 90 90 0 1 0 -180 0' },
+      { id: 'eye-l', d: 'M 165 200 m -8 0 a 8 10 0 1 0 16 0 a 8 10 0 1 0 -16 0' },
+      { id: 'eye-r', d: 'M 235 200 m -8 0 a 8 10 0 1 0 16 0 a 8 10 0 1 0 -16 0' },
+      { id: 'nose',  d: 'M 200 240 m -10 0 a 10 7 0 1 0 20 0 a 10 7 0 1 0 -20 0' },
+      { id: 'mouth', d: 'M 200 248 L 200 262 M 200 262 Q 188 268 182 258 M 200 262 Q 212 268 218 258' },
+      { id: 'tail',  d: 'M 320 350 m -22 0 a 22 22 0 1 0 44 0 a 22 22 0 1 0 -44 0' },
+    ],
+  },
+  bear: {
+    name: '곰', emoji: '🐻', viewBox: '0 0 400 420', category: 'animal',
+    parts: [
+      { id: 'body',  d: 'M 200 320 m -130 0 a 130 90 0 1 0 260 0 a 130 90 0 1 0 -260 0' },
+      { id: 'ear-l', d: 'M 110 130 m -28 0 a 28 28 0 1 0 56 0 a 28 28 0 1 0 -56 0' },
+      { id: 'ear-r', d: 'M 290 130 m -28 0 a 28 28 0 1 0 56 0 a 28 28 0 1 0 -56 0' },
+      { id: 'ear-in-l', d: 'M 110 130 m -14 0 a 14 14 0 1 0 28 0 a 14 14 0 1 0 -28 0' },
+      { id: 'ear-in-r', d: 'M 290 130 m -14 0 a 14 14 0 1 0 28 0 a 14 14 0 1 0 -28 0' },
+      { id: 'head',  d: 'M 200 200 m -100 0 a 100 100 0 1 0 200 0 a 100 100 0 1 0 -200 0' },
+      { id: 'snout', d: 'M 200 240 m -50 0 a 50 36 0 1 0 100 0 a 50 36 0 1 0 -100 0' },
+      { id: 'eye-l', d: 'M 165 185 m -8 0 a 8 8 0 1 0 16 0 a 8 8 0 1 0 -16 0' },
+      { id: 'eye-r', d: 'M 235 185 m -8 0 a 8 8 0 1 0 16 0 a 8 8 0 1 0 -16 0' },
+      { id: 'nose',  d: 'M 200 230 m -14 0 a 14 10 0 1 0 28 0 a 14 10 0 1 0 -28 0' },
+    ],
+  },
+  fish: {
+    name: '물고기', emoji: '🐟', viewBox: '0 0 480 320',
+    category: 'animal',
+    parts: [
+      { id: 'body',  d: 'M 80 160 C 80 60 280 60 320 160 C 280 260 80 260 80 160 Z' },
+      { id: 'tail',  d: 'M 320 160 L 410 90 L 410 230 Z' },
+      { id: 'fin-top', d: 'M 200 100 L 230 50 L 250 100 Z' },
+      { id: 'fin-bot', d: 'M 200 220 L 230 270 L 250 220 Z' },
+      { id: 'eye',   d: 'M 130 145 m -12 0 a 12 12 0 1 0 24 0 a 12 12 0 1 0 -24 0' },
+      { id: 'eye-in',d: 'M 130 145 m -5 0 a 5 5 0 1 0 10 0 a 5 5 0 1 0 -10 0' },
+      { id: 'mouth', d: 'M 90 160 Q 80 175 95 185' },
+    ],
+  },
+  butterfly: {
+    name: '나비', emoji: '🦋', viewBox: '0 0 400 400',
+    category: 'animal',
+    parts: [
+      { id: 'body',     d: 'M 196 80 L 196 320 L 204 320 L 204 80 Z' },
+      { id: 'wing-tl',  d: 'M 200 130 C 130 80 60 100 60 170 C 60 220 130 220 200 200 Z' },
+      { id: 'wing-tr',  d: 'M 200 130 C 270 80 340 100 340 170 C 340 220 270 220 200 200 Z' },
+      { id: 'wing-bl',  d: 'M 200 210 C 140 240 80 260 90 320 C 100 350 160 340 200 290 Z' },
+      { id: 'wing-br',  d: 'M 200 210 C 260 240 320 260 310 320 C 300 350 240 340 200 290 Z' },
+      { id: 'dot-tl',   d: 'M 110 160 m -16 0 a 16 16 0 1 0 32 0 a 16 16 0 1 0 -32 0' },
+      { id: 'dot-tr',   d: 'M 290 160 m -16 0 a 16 16 0 1 0 32 0 a 16 16 0 1 0 -32 0' },
+      { id: 'head',     d: 'M 200 80 m -14 0 a 14 14 0 1 0 28 0 a 14 14 0 1 0 -28 0' },
+      { id: 'ant-l',    d: 'M 194 70 Q 175 40 165 30' },
+      { id: 'ant-r',    d: 'M 206 70 Q 225 40 235 30' },
+    ],
+  },
+  // ── 탈것 ───────────────────────────────────────────────
+  bus: {
+    name: '버스', emoji: '🚌', viewBox: '0 0 480 320', category: 'vehicle',
+    parts: [
+      { id: 'body',     d: 'M 60 90 L 420 90 Q 440 90 440 110 L 440 240 L 60 240 Z' },
+      { id: 'window-1', d: 'M 80 110 L 130 110 L 130 170 L 80 170 Z' },
+      { id: 'window-2', d: 'M 150 110 L 200 110 L 200 170 L 150 170 Z' },
+      { id: 'window-3', d: 'M 220 110 L 270 110 L 270 170 L 220 170 Z' },
+      { id: 'window-4', d: 'M 290 110 L 340 110 L 340 170 L 290 170 Z' },
+      { id: 'door',     d: 'M 360 110 L 410 110 L 410 220 L 360 220 Z' },
+      { id: 'stripe',   d: 'M 60 190 L 440 190 L 440 210 L 60 210 Z' },
+      { id: 'wheel-l',  d: 'M 130 250 m -32 0 a 32 32 0 1 0 64 0 a 32 32 0 1 0 -64 0' },
+      { id: 'wheel-r',  d: 'M 360 250 m -32 0 a 32 32 0 1 0 64 0 a 32 32 0 1 0 -64 0' },
+      { id: 'hub-l',    d: 'M 130 250 m -12 0 a 12 12 0 1 0 24 0 a 12 12 0 1 0 -24 0' },
+      { id: 'hub-r',    d: 'M 360 250 m -12 0 a 12 12 0 1 0 24 0 a 12 12 0 1 0 -24 0' },
+    ],
+  },
+  rocket: {
+    name: '로켓', emoji: '🚀', viewBox: '0 0 320 480', category: 'vehicle',
+    parts: [
+      { id: 'nose',    d: 'M 160 30 Q 200 90 200 160 L 120 160 Q 120 90 160 30 Z' },
+      { id: 'body',    d: 'M 120 160 L 200 160 L 200 360 L 120 360 Z' },
+      { id: 'window',  d: 'M 160 220 m -28 0 a 28 28 0 1 0 56 0 a 28 28 0 1 0 -56 0' },
+      { id: 'window-in', d: 'M 160 220 m -14 0 a 14 14 0 1 0 28 0 a 14 14 0 1 0 -28 0' },
+      { id: 'fin-l',   d: 'M 120 300 L 60 400 L 120 380 Z' },
+      { id: 'fin-r',   d: 'M 200 300 L 260 400 L 200 380 Z' },
+      { id: 'flame-1', d: 'M 130 360 Q 160 430 130 460 Q 145 430 160 460 Q 175 430 190 460 Q 160 430 190 360 Z' },
+    ],
+  },
+  ship: {
+    name: '배', emoji: '🚢', viewBox: '0 0 480 360', category: 'vehicle',
+    parts: [
+      { id: 'sea',    d: 'M 0 280 Q 120 270 240 280 T 480 280 L 480 320 L 0 320 Z' },
+      { id: 'hull',   d: 'M 70 200 L 410 200 L 380 280 L 100 280 Z' },
+      { id: 'deck',   d: 'M 150 130 L 360 130 L 360 200 L 150 200 Z' },
+      { id: 'cabin',  d: 'M 200 80 L 320 80 L 320 130 L 200 130 Z' },
+      { id: 'window-1', d: 'M 220 95 L 250 95 L 250 120 L 220 120 Z' },
+      { id: 'window-2', d: 'M 270 95 L 300 95 L 300 120 L 270 120 Z' },
+      { id: 'chimney', d: 'M 250 40 L 280 40 L 280 80 L 250 80 Z' },
+      { id: 'mast',   d: 'M 254 0 L 260 80 L 270 80 L 276 0 Z' },
+    ],
+  },
+  train: {
+    name: '기차', emoji: '🚂', viewBox: '0 0 480 320', category: 'vehicle',
+    parts: [
+      { id: 'engine',  d: 'M 60 120 L 280 120 L 280 240 L 60 240 Z' },
+      { id: 'cabin',   d: 'M 200 60 L 280 60 L 280 120 L 200 120 Z' },
+      { id: 'roof',    d: 'M 50 110 L 290 110 L 290 130 L 50 130 Z' },
+      { id: 'window',  d: 'M 220 75 L 270 75 L 270 110 L 220 110 Z' },
+      { id: 'chimney', d: 'M 90 50 L 130 50 L 135 110 L 85 110 Z' },
+      { id: 'smoke',   d: 'M 110 30 m -22 0 a 22 22 0 1 0 44 0 a 22 22 0 1 0 -44 0' },
+      { id: 'wagon',   d: 'M 310 140 L 440 140 L 440 240 L 310 240 Z' },
+      { id: 'wheel-1', d: 'M 110 250 m -22 0 a 22 22 0 1 0 44 0 a 22 22 0 1 0 -44 0' },
+      { id: 'wheel-2', d: 'M 220 250 m -22 0 a 22 22 0 1 0 44 0 a 22 22 0 1 0 -44 0' },
+      { id: 'wheel-3', d: 'M 350 250 m -18 0 a 18 18 0 1 0 36 0 a 18 18 0 1 0 -36 0' },
+      { id: 'wheel-4', d: 'M 410 250 m -18 0 a 18 18 0 1 0 36 0 a 18 18 0 1 0 -36 0' },
+    ],
+  },
+  plane: {
+    name: '비행기', emoji: '✈️', viewBox: '0 0 480 320', category: 'vehicle',
+    parts: [
+      { id: 'body',    d: 'M 60 150 L 380 130 L 430 160 L 380 190 L 60 170 Z' },
+      { id: 'tail',    d: 'M 380 130 L 420 70 L 430 70 L 410 160 Z' },
+      { id: 'wing-up', d: 'M 200 150 L 280 60 L 320 60 L 270 160 Z' },
+      { id: 'wing-dn', d: 'M 200 170 L 280 260 L 320 260 L 270 165 Z' },
+      { id: 'window-1', d: 'M 130 150 m -8 0 a 8 8 0 1 0 16 0 a 8 8 0 1 0 -16 0' },
+      { id: 'window-2', d: 'M 170 150 m -8 0 a 8 8 0 1 0 16 0 a 8 8 0 1 0 -16 0' },
+      { id: 'window-3', d: 'M 210 150 m -8 0 a 8 8 0 1 0 16 0 a 8 8 0 1 0 -16 0' },
+      { id: 'nose',    d: 'M 60 150 Q 30 160 60 170 Z' },
+    ],
+  },
+  // ── 음식 ───────────────────────────────────────────────
+  banana: {
+    name: '바나나', emoji: '🍌', viewBox: '0 0 400 400', category: 'food',
+    parts: [
+      { id: 'body',    d: 'M 80 100 Q 100 50 160 70 Q 320 110 320 320 Q 230 340 150 280 Q 80 200 80 100 Z' },
+      { id: 'tip-top', d: 'M 80 100 L 80 70 L 110 60 L 100 105 Z' },
+      { id: 'tip-bot', d: 'M 320 320 L 350 330 L 330 360 L 305 340 Z' },
+      { id: 'stripe',  d: 'M 110 110 Q 200 130 290 280' },
+    ],
+  },
+  iceCream: {
+    name: '아이스크림', emoji: '🍦', viewBox: '0 0 400 480', category: 'food',
+    parts: [
+      { id: 'scoop-top', d: 'M 200 70 m -75 0 a 75 75 0 1 0 150 0 a 75 75 0 1 0 -150 0' },
+      { id: 'scoop-mid', d: 'M 200 140 m -90 0 a 90 70 0 1 0 180 0 a 90 70 0 1 0 -180 0' },
+      { id: 'cone',      d: 'M 110 220 L 290 220 L 200 460 Z' },
+      { id: 'cone-line-1', d: 'M 140 260 L 240 260' },
+      { id: 'cone-line-2', d: 'M 155 320 L 240 320' },
+      { id: 'cone-line-3', d: 'M 175 380 L 230 380' },
+      { id: 'cherry',    d: 'M 200 50 m -16 0 a 16 16 0 1 0 32 0 a 16 16 0 1 0 -32 0' },
+    ],
+  },
+  cake: {
+    name: '케이크', emoji: '🍰', viewBox: '0 0 400 400', category: 'food',
+    parts: [
+      { id: 'plate',  d: 'M 50 340 L 350 340 L 320 360 L 80 360 Z' },
+      { id: 'base',   d: 'M 80 250 L 320 250 L 320 340 L 80 340 Z' },
+      { id: 'cream',  d: 'M 80 230 Q 200 200 320 230 L 320 250 L 80 250 Z' },
+      { id: 'top',    d: 'M 90 150 L 310 150 L 310 230 L 90 230 Z' },
+      { id: 'candle', d: 'M 196 80 L 204 80 L 204 150 L 196 150 Z' },
+      { id: 'flame',  d: 'M 200 50 Q 190 65 200 80 Q 210 65 200 50 Z' },
+      { id: 'cherry-1', d: 'M 130 130 m -10 0 a 10 10 0 1 0 20 0 a 10 10 0 1 0 -20 0' },
+      { id: 'cherry-2', d: 'M 270 130 m -10 0 a 10 10 0 1 0 20 0 a 10 10 0 1 0 -20 0' },
+    ],
+  },
+  watermelon: {
+    name: '수박', emoji: '🍉', viewBox: '0 0 400 320', category: 'food',
+    parts: [
+      { id: 'rind',  d: 'M 40 280 Q 200 -60 360 280 Z' },
+      { id: 'white', d: 'M 60 270 Q 200 -10 340 270 Z' },
+      { id: 'flesh', d: 'M 80 260 Q 200 30 320 260 Z' },
+      { id: 'seed-1', d: 'M 150 200 m -6 0 a 6 10 0 1 0 12 0 a 6 10 0 1 0 -12 0' },
+      { id: 'seed-2', d: 'M 200 170 m -6 0 a 6 10 0 1 0 12 0 a 6 10 0 1 0 -12 0' },
+      { id: 'seed-3', d: 'M 250 200 m -6 0 a 6 10 0 1 0 12 0 a 6 10 0 1 0 -12 0' },
+      { id: 'seed-4', d: 'M 180 230 m -6 0 a 6 10 0 1 0 12 0 a 6 10 0 1 0 -12 0' },
+      { id: 'seed-5', d: 'M 220 230 m -6 0 a 6 10 0 1 0 12 0 a 6 10 0 1 0 -12 0' },
+    ],
+  },
+  // ── 자연 ───────────────────────────────────────────────
+  tree: {
+    name: '나무', emoji: '🌳', viewBox: '0 0 400 480', category: 'nature',
+    parts: [
+      { id: 'trunk',  d: 'M 180 280 L 220 280 L 230 460 L 170 460 Z' },
+      { id: 'leaves-bot', d: 'M 200 300 m -150 0 a 150 100 0 1 0 300 0 a 150 100 0 1 0 -300 0' },
+      { id: 'leaves-mid', d: 'M 200 220 m -120 0 a 120 90 0 1 0 240 0 a 120 90 0 1 0 -240 0' },
+      { id: 'leaves-top', d: 'M 200 140 m -90 0 a 90 70 0 1 0 180 0 a 90 70 0 1 0 -180 0' },
+      { id: 'apple-1', d: 'M 130 220 m -12 0 a 12 12 0 1 0 24 0 a 12 12 0 1 0 -24 0' },
+      { id: 'apple-2', d: 'M 260 250 m -12 0 a 12 12 0 1 0 24 0 a 12 12 0 1 0 -24 0' },
+      { id: 'apple-3', d: 'M 200 290 m -12 0 a 12 12 0 1 0 24 0 a 12 12 0 1 0 -24 0' },
+    ],
+  },
+  cloud: {
+    name: '구름', emoji: '☁️', viewBox: '0 0 480 320', category: 'nature',
+    parts: [
+      { id: 'puff-1', d: 'M 120 200 m -60 0 a 60 60 0 1 0 120 0 a 60 60 0 1 0 -120 0' },
+      { id: 'puff-2', d: 'M 200 160 m -80 0 a 80 80 0 1 0 160 0 a 80 80 0 1 0 -160 0' },
+      { id: 'puff-3', d: 'M 300 180 m -70 0 a 70 70 0 1 0 140 0 a 70 70 0 1 0 -140 0' },
+      { id: 'puff-4', d: 'M 380 220 m -50 0 a 50 50 0 1 0 100 0 a 50 50 0 1 0 -100 0' },
+      { id: 'base',   d: 'M 60 230 L 430 230 L 400 270 L 90 270 Z' },
+      { id: 'rain-1', d: 'M 140 290 L 130 320' },
+      { id: 'rain-2', d: 'M 220 290 L 210 320' },
+      { id: 'rain-3', d: 'M 300 290 L 290 320' },
+    ],
+  },
+  star: {
+    name: '별', emoji: '⭐', viewBox: '0 0 400 400', category: 'nature',
+    parts: [
+      { id: 'body',   d: 'M 200 40 L 240 150 L 360 150 L 260 220 L 300 340 L 200 270 L 100 340 L 140 220 L 40 150 L 160 150 Z' },
+      { id: 'shine-1', d: 'M 200 80 L 210 110 L 200 130 L 190 110 Z' },
+      { id: 'shine-2', d: 'M 200 270 L 210 240 L 200 220 L 190 240 Z' },
+    ],
+  },
+  moon: {
+    name: '달', emoji: '🌙', viewBox: '0 0 400 400', category: 'nature',
+    parts: [
+      { id: 'body',  d: 'M 200 60 C 280 60 340 130 340 200 C 340 290 270 340 200 340 C 250 320 270 260 270 200 C 270 140 250 80 200 60 Z' },
+      { id: 'crater-1', d: 'M 240 160 m -14 0 a 14 14 0 1 0 28 0 a 14 14 0 1 0 -28 0' },
+      { id: 'crater-2', d: 'M 280 220 m -10 0 a 10 10 0 1 0 20 0 a 10 10 0 1 0 -20 0' },
+      { id: 'crater-3', d: 'M 250 270 m -12 0 a 12 12 0 1 0 24 0 a 12 12 0 1 0 -24 0' },
+      { id: 'star-1', d: 'M 90 110 L 100 130 L 120 140 L 100 150 L 90 170 L 80 150 L 60 140 L 80 130 Z' },
+      { id: 'star-2', d: 'M 100 290 L 105 305 L 120 310 L 105 315 L 100 330 L 95 315 L 80 310 L 95 305 Z' },
+    ],
+  },
+  // ── 캐릭터 ─────────────────────────────────────────────
+  robot: {
+    name: '로봇', emoji: '🤖', viewBox: '0 0 400 480', category: 'character',
+    parts: [
+      { id: 'antenna',   d: 'M 196 30 L 204 30 L 204 80 L 196 80 Z' },
+      { id: 'ant-ball',  d: 'M 200 20 m -14 0 a 14 14 0 1 0 28 0 a 14 14 0 1 0 -28 0' },
+      { id: 'head',      d: 'M 100 80 L 300 80 L 300 220 L 100 220 Z' },
+      { id: 'eye-l',     d: 'M 150 150 m -18 0 a 18 18 0 1 0 36 0 a 18 18 0 1 0 -36 0' },
+      { id: 'eye-r',     d: 'M 250 150 m -18 0 a 18 18 0 1 0 36 0 a 18 18 0 1 0 -36 0' },
+      { id: 'mouth',     d: 'M 160 190 L 240 190 L 240 200 L 160 200 Z' },
+      { id: 'neck',      d: 'M 170 220 L 230 220 L 230 250 L 170 250 Z' },
+      { id: 'body',      d: 'M 80 250 L 320 250 L 320 400 L 80 400 Z' },
+      { id: 'button-1',  d: 'M 150 320 m -14 0 a 14 14 0 1 0 28 0 a 14 14 0 1 0 -28 0' },
+      { id: 'button-2',  d: 'M 250 320 m -14 0 a 14 14 0 1 0 28 0 a 14 14 0 1 0 -28 0' },
+      { id: 'arm-l',     d: 'M 30 280 L 80 280 L 80 380 L 30 380 Z' },
+      { id: 'arm-r',     d: 'M 320 280 L 370 280 L 370 380 L 320 380 Z' },
+      { id: 'leg-l',     d: 'M 130 400 L 180 400 L 180 460 L 130 460 Z' },
+      { id: 'leg-r',     d: 'M 220 400 L 270 400 L 270 460 L 220 460 Z' },
+    ],
+  },
+  ghost: {
+    name: '유령', emoji: '👻', viewBox: '0 0 400 480', category: 'character',
+    parts: [
+      { id: 'body',  d: 'M 200 50 C 100 50 60 130 60 220 L 60 420 L 100 380 L 140 420 L 180 380 L 220 420 L 260 380 L 300 420 L 340 380 L 340 220 C 340 130 300 50 200 50 Z' },
+      { id: 'eye-l', d: 'M 155 200 m -18 0 a 18 22 0 1 0 36 0 a 18 22 0 1 0 -36 0' },
+      { id: 'eye-r', d: 'M 245 200 m -18 0 a 18 22 0 1 0 36 0 a 18 22 0 1 0 -36 0' },
+      { id: 'mouth', d: 'M 200 280 m -25 0 a 25 30 0 1 0 50 0 a 25 30 0 1 0 -50 0' },
+      { id: 'cheek-l', d: 'M 100 260 m -16 0 a 16 12 0 1 0 32 0 a 16 12 0 1 0 -32 0' },
+      { id: 'cheek-r', d: 'M 300 260 m -16 0 a 16 12 0 1 0 32 0 a 16 12 0 1 0 -32 0' },
+    ],
+  },
+  monster: {
+    name: '몬스터', emoji: '👾', viewBox: '0 0 400 400', category: 'character',
+    parts: [
+      { id: 'body',   d: 'M 80 80 L 320 80 L 320 280 L 280 280 L 280 320 L 240 320 L 240 280 L 160 280 L 160 320 L 120 320 L 120 280 L 80 280 Z' },
+      { id: 'eye-l',  d: 'M 140 150 L 180 150 L 180 200 L 140 200 Z' },
+      { id: 'eye-r',  d: 'M 220 150 L 260 150 L 260 200 L 220 200 Z' },
+      { id: 'pupil-l',d: 'M 150 170 L 170 170 L 170 190 L 150 190 Z' },
+      { id: 'pupil-r',d: 'M 230 170 L 250 170 L 250 190 L 230 190 Z' },
+      { id: 'mouth',  d: 'M 130 220 L 270 220 L 270 250 L 130 250 Z' },
+      { id: 'tooth-1',d: 'M 150 220 L 160 240 L 170 220 Z' },
+      { id: 'tooth-2',d: 'M 190 220 L 200 240 L 210 220 Z' },
+      { id: 'tooth-3',d: 'M 230 220 L 240 240 L 250 220 Z' },
+      { id: 'ant-l',  d: 'M 100 80 L 80 40 L 95 35 L 115 75 Z' },
+      { id: 'ant-r',  d: 'M 300 80 L 320 40 L 305 35 L 285 75 Z' },
+    ],
+  },
 };
 
-const COLORING_ORDER = ['cat', 'dog', 'car', 'sunflower', 'apple'];
+const COLORING_ORDER = [
+  'cat', 'dog', 'rabbit', 'bear', 'fish', 'butterfly',
+  'car', 'bus', 'rocket', 'ship', 'train', 'plane',
+  'apple', 'banana', 'iceCream', 'cake', 'watermelon',
+  'sunflower', 'tree', 'cloud', 'star', 'moon',
+  'robot', 'ghost', 'monster',
+];
 
 function ColoringActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow }) {
   const t = tone;
-  const [currentId, setCurrentId] = useStateA(COLORING_ORDER.includes(subId) ? subId : 'cat');
+  const initialId = COLORING_ORDER.includes(subId) ? subId : 'cat';
+  const [currentId, setCurrentId] = useStateA(initialId);
   const tpl = COLORING_TEMPLATES[currentId];
+  const [activeCat, setActiveCat] = useStateA(tpl?.category || 'animal');
   const [color, setColor] = useStateA(COLOR_PALETTE[0]);
   const [fills, setFills] = useStateA({});
   const [hint, setHint] = useStateA(null);
   const [saved, setSaved] = useStateA(false);
   const [doneOnce, setDoneOnce] = useStateA(false);
+
+  const visibleIds = COLORING_ORDER.filter((id) => COLORING_TEMPLATES[id].category === activeCat);
 
   const filledCount = Object.keys(fills).length;
   const totalParts = tpl.parts.length;
@@ -170,7 +461,36 @@ function ColoringActivity({ tone, subId, fontSize, onComplete, onFinish, voiceSh
           }}>💾</button>
       </div>
 
-      {/* ─ 도안 가로 스크롤 ─ */}
+      {/* ─ 카테고리 탭 ─ */}
+      <div style={{
+        flex: '0 0 auto',
+        padding: '0 24px 6px',
+        display: 'flex', gap: 8, justifyContent: 'center',
+      }}>
+        {COLORING_CATEGORIES.map((c) => {
+          const active = c.id === activeCat;
+          return (
+            <button key={c.id} onClick={() => setActiveCat(c.id)}
+              onPointerDown={(e) => e.currentTarget.animate([{transform:'scale(1)'},{transform:'scale(0.94)'}],{duration:130})}
+              style={{
+                flex: '0 0 auto',
+                minWidth: 110, height: 44,
+                background: active ? colorCat : '#fff',
+                color: active ? t.textOnColor : t.text,
+                border: active ? (t.outline === 'none' ? 'none' : t.outline) : accentBorder,
+                borderRadius: 22,
+                cursor: 'pointer', fontFamily: 'inherit',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                boxShadow: active ? t.shadow : t.shadowSm,
+                padding: '0 14px',
+                fontSize: fontSize - 4, fontWeight: 900,
+              }}>
+              <span style={{ fontSize: 20 }}>{c.emoji}</span>{c.name}
+            </button>
+          );
+        })}
+      </div>
+      {/* ─ 도안 가로 스크롤 (선택 카테고리만) ─ */}
       <div style={{
         flex: '0 0 auto',
         padding: '0 24px 8px',
@@ -178,7 +498,7 @@ function ColoringActivity({ tone, subId, fontSize, onComplete, onFinish, voiceSh
         overflowX: 'auto', overflowY: 'hidden',
         alignItems: 'center',
       }}>
-        {COLORING_ORDER.map((id) => {
+        {visibleIds.map((id) => {
           const x = COLORING_TEMPLATES[id];
           const active = id === currentId;
           return (
@@ -373,6 +693,7 @@ function hexToHue(hex) {
   return Math.round(h * 60);
 }
 
+// 도구별 기본 stroke 스타일 — incremental 그리기와 메인 레이어용
 function applyToolStyle(ctx, s) {
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
@@ -387,50 +708,75 @@ function applyToolStyle(ctx, s) {
   ctx.globalCompositeOperation = 'source-over';
   ctx.strokeStyle = s.color;
   if (s.tool === 'crayon') {
-    ctx.lineWidth = s.size;
-    ctx.globalAlpha = Math.min(1, s.opacity * 0.75);
+    ctx.lineWidth = s.size * 0.92;
+    ctx.globalAlpha = Math.min(1, s.opacity * 0.82);
   } else if (s.tool === 'brush') {
-    ctx.lineWidth = s.size * 1.45;
-    ctx.globalAlpha = Math.min(1, s.opacity * 0.95);
+    ctx.lineWidth = s.size * 1.55;
+    ctx.globalAlpha = Math.min(1, s.opacity * 0.92);
     ctx.shadowColor = s.color;
-    ctx.shadowBlur = s.size * 0.45;
+    ctx.shadowBlur = s.size * 0.8;
   } else if (s.tool === 'marker') {
-    ctx.lineWidth = s.size * 1.05;
+    ctx.lineWidth = s.size * 1.1;
     ctx.globalAlpha = Math.min(1, s.opacity);
   } else if (s.tool === 'pencil') {
-    ctx.lineWidth = Math.max(2.5, s.size * 0.42);
-    ctx.globalAlpha = Math.min(1, s.opacity * 0.9);
+    ctx.lineWidth = Math.max(2, s.size * 0.32);
+    ctx.globalAlpha = Math.min(1, s.opacity * 0.7);
   } else {
     ctx.lineWidth = s.size;
     ctx.globalAlpha = s.opacity;
   }
 }
 
-function renderStroke(ctx, stroke) {
-  applyToolStyle(ctx, stroke);
-  const pts = stroke.points;
-  if (!pts || pts.length === 0) return;
+// 단일 패스 그리기 — 도구별 보조 레이어용
+function strokePath(ctx, pts, offsetX = 0, offsetY = 0) {
   if (pts.length === 1) {
-    const p = pts[0];
-    if (stroke.tool === 'eraser') {
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, ctx.lineWidth / 2, 0, Math.PI * 2);
-      ctx.fillStyle = '#000';
-      ctx.fill();
-    } else {
-      const prevFill = ctx.fillStyle;
-      ctx.fillStyle = stroke.color;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, ctx.lineWidth / 2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = prevFill;
-    }
+    ctx.beginPath();
+    ctx.arc(pts[0].x + offsetX, pts[0].y + offsetY, ctx.lineWidth / 2, 0, Math.PI * 2);
+    ctx.fillStyle = ctx.strokeStyle;
+    ctx.fill();
     return;
   }
   ctx.beginPath();
-  ctx.moveTo(pts[0].x, pts[0].y);
-  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+  ctx.moveTo(pts[0].x + offsetX, pts[0].y + offsetY);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x + offsetX, pts[i].y + offsetY);
   ctx.stroke();
+}
+
+function renderStroke(ctx, stroke) {
+  const pts = stroke.points;
+  if (!pts || pts.length === 0) return;
+
+  if (stroke.tool === 'crayon') {
+    // 1) 옅은 외곽 (텍스처 후광)
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.strokeStyle = stroke.color;
+    ctx.lineWidth = stroke.size * 1.25;
+    ctx.globalAlpha = Math.min(1, stroke.opacity * 0.28);
+    ctx.shadowBlur = 0;
+    strokePath(ctx, pts);
+    // 2) 가운데 진한 메인
+    ctx.lineWidth = stroke.size * 0.85;
+    ctx.globalAlpha = Math.min(1, stroke.opacity * 0.88);
+    strokePath(ctx, pts);
+    return;
+  }
+  if (stroke.tool === 'marker') {
+    // 1) 메인 진한 단색
+    applyToolStyle(ctx, stroke);
+    strokePath(ctx, pts);
+    // 2) 위쪽에 얇은 흰색 광택
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = Math.max(2, stroke.size * 0.32);
+    ctx.globalAlpha = Math.min(1, stroke.opacity * 0.45);
+    ctx.shadowBlur = 0;
+    strokePath(ctx, pts, 0, -stroke.size * 0.22);
+    return;
+  }
+  // brush / pencil / eraser / fallback — 단일 패스
+  applyToolStyle(ctx, stroke);
+  strokePath(ctx, pts);
 }
 
 function FreeColoringActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow }) {
@@ -445,8 +791,11 @@ function FreeColoringActivity({ tone, subId, fontSize, onComplete, onFinish, voi
   const actionsRef = useRefA([]);
 
   const [size, setSize] = useStateA({ w: 0, h: 0 });
-  const [currentId, setCurrentId] = useStateA(COLORING_ORDER.includes(subId) ? subId : 'cat');
+  const initId = COLORING_ORDER.includes(subId) ? subId : 'cat';
+  const [currentId, setCurrentId] = useStateA(initId);
   const tpl = COLORING_TEMPLATES[currentId];
+  const [activeCat, setActiveCat] = useStateA(tpl?.category || 'animal');
+  const visibleIds = COLORING_ORDER.filter((id) => COLORING_TEMPLATES[id].category === activeCat);
   const [tool, setTool] = useStateA('crayon');
   const [color, setColor] = useStateA(FREE_COLOR_PALETTE[0]);
   const [brushSize, setBrushSize] = useStateA('m');
@@ -552,7 +901,11 @@ function FreeColoringActivity({ tone, subId, fontSize, onComplete, onFinish, voi
   const onPointerMove = (e) => {
     if (!drawingRef.current) return;
     e.preventDefault();
-    const p = getPt(e);
+    let p = getPt(e);
+    // 연필: 미세한 떨림(jitter)으로 단단·거친 느낌
+    if (drawingRef.current.tool === 'pencil') {
+      p = { x: p.x + (Math.random() - 0.5) * 1.4, y: p.y + (Math.random() - 0.5) * 1.4 };
+    }
     const pts = drawingRef.current.points;
     pts.push(p);
     if (pts.length < 2) return;
@@ -678,7 +1031,36 @@ function FreeColoringActivity({ tone, subId, fontSize, onComplete, onFinish, voi
         </div>
       </div>
 
-      {/* 도안 가로 스크롤 (영역 색칠과 동일한 패턴) */}
+      {/* 카테고리 탭 */}
+      <div style={{
+        flex: '0 0 auto',
+        padding: '0 24px 6px',
+        display: 'flex', gap: 8, justifyContent: 'center',
+      }}>
+        {COLORING_CATEGORIES.map((c) => {
+          const active = c.id === activeCat;
+          return (
+            <button key={c.id} onClick={() => setActiveCat(c.id)}
+              onPointerDown={(e) => e.currentTarget.animate([{transform:'scale(1)'},{transform:'scale(0.94)'}],{duration:130})}
+              style={{
+                flex: '0 0 auto',
+                minWidth: 110, height: 40,
+                background: active ? colorCat : '#fff',
+                color: active ? t.textOnColor : t.text,
+                border: active ? (t.outline === 'none' ? 'none' : t.outline) : accentBorder,
+                borderRadius: 20,
+                cursor: 'pointer', fontFamily: 'inherit',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                boxShadow: active ? t.shadow : t.shadowSm,
+                padding: '0 12px',
+                fontSize: fontSize - 4, fontWeight: 900,
+              }}>
+              <span style={{ fontSize: 18 }}>{c.emoji}</span>{c.name}
+            </button>
+          );
+        })}
+      </div>
+      {/* 도안 가로 스크롤 */}
       <div style={{
         flex: '0 0 auto',
         padding: '0 24px 8px',
@@ -686,7 +1068,7 @@ function FreeColoringActivity({ tone, subId, fontSize, onComplete, onFinish, voi
         overflowX: 'auto', overflowY: 'hidden',
         alignItems: 'center',
       }}>
-        {COLORING_ORDER.map((id) => {
+        {visibleIds.map((id) => {
           const x = COLORING_TEMPLATES[id];
           const active = id === currentId;
           return (
@@ -694,7 +1076,7 @@ function FreeColoringActivity({ tone, subId, fontSize, onComplete, onFinish, voi
               onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.94)' }], { duration: 130 })}
               style={{
                 flex: '0 0 auto',
-                width: 130, height: 64,
+                width: 130, height: 60,
                 background: active ? colorCat : '#fff',
                 color: active ? t.textOnColor : t.text,
                 border: active ? (t.outline === 'none' ? 'none' : t.outline) : accentBorder,
@@ -704,8 +1086,8 @@ function FreeColoringActivity({ tone, subId, fontSize, onComplete, onFinish, voi
                 boxShadow: active ? t.shadow : t.shadowSm,
                 padding: '0 10px',
               }}>
-              <span style={{ fontSize: 30, lineHeight: 1 }}>{x.emoji}</span>
-              <span style={{ fontSize: fontSize - 4, fontWeight: 900, whiteSpace: 'nowrap' }}>{x.name}</span>
+              <span style={{ fontSize: 26, lineHeight: 1 }}>{x.emoji}</span>
+              <span style={{ fontSize: fontSize - 6, fontWeight: 900, whiteSpace: 'nowrap' }}>{x.name}</span>
             </button>
           );
         })}
@@ -1214,6 +1596,380 @@ function HangulWordsActivity({ tone, fontSize, onComplete, onFinish, voiceShow }
   );
 }
 
+// ─────────────────────────────────────────────────────────────
+// 한글 — 따라쓰기 (점선 위에 손가락으로 따라 그리기)
+// ─────────────────────────────────────────────────────────────
+const TRACE_GLYPHS = [
+  { ch: 'ㄱ', name: '기역' }, { ch: 'ㄴ', name: '니은' },
+  { ch: 'ㄷ', name: '디귿' }, { ch: 'ㅁ', name: '미음' },
+  { ch: 'ㅇ', name: '이응' }, { ch: 'ㅅ', name: '시옷' },
+  { ch: 'ㅏ', name: '아' },   { ch: 'ㅓ', name: '어' },
+  { ch: 'ㅗ', name: '오' },   { ch: 'ㅜ', name: '우' },
+];
+
+function TraceActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
+  const t = tone;
+  const color = t.cat.hangul;
+  const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
+
+  const [idx, setIdx] = useStateA(0);
+  const [strokes, setStrokes] = useStateA([]); // [{points:[{x,y}]}]
+  const [collected, setCollected] = useStateA(() => new Set());
+  const drawingRef = useRefA(null);
+  const canvasRef = useRefA(null);
+  const containerRef = useRefA(null);
+  const [size, setSize] = useStateA({ w: 0, h: 0 });
+
+  const cur = TRACE_GLYPHS[idx];
+
+  // 컨테이너 크기 관찰
+  useEffectA(() => {
+    if (!containerRef.current) return;
+    const measure = () => {
+      const el = containerRef.current;
+      if (!el) return;
+      const w = el.clientWidth, h = el.clientHeight;
+      if (w > 0 && h > 0) setSize((p) => p.w === w && p.h === h ? p : { w, h });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, []);
+
+  // 캔버스 백킹스토어
+  useEffectA(() => {
+    const cvs = canvasRef.current;
+    if (!cvs || size.w === 0) return;
+    const dpr = window.devicePixelRatio || 1;
+    cvs.width = Math.floor(size.w * dpr);
+    cvs.height = Math.floor(size.h * dpr);
+    cvs.style.width = size.w + 'px';
+    cvs.style.height = size.h + 'px';
+  }, [size.w, size.h]);
+
+  // 스트로크 렌더
+  useEffectA(() => {
+    const cvs = canvasRef.current;
+    if (!cvs || size.w === 0) return;
+    const ctx = cvs.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, cvs.width, cvs.height);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.strokeStyle = color;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 22;
+    strokes.forEach((s) => {
+      if (!s.points || !s.points.length) return;
+      ctx.beginPath();
+      if (s.points.length === 1) {
+        ctx.arc(s.points[0].x, s.points[0].y, 11, 0, Math.PI * 2);
+        ctx.fillStyle = color; ctx.fill();
+      } else {
+        ctx.moveTo(s.points[0].x, s.points[0].y);
+        for (let i = 1; i < s.points.length; i++) ctx.lineTo(s.points[i].x, s.points[i].y);
+        ctx.stroke();
+      }
+    });
+  }, [strokes, size.w, size.h, color]);
+
+  // 글자 변경 시 리셋
+  useEffectA(() => { setStrokes([]); drawingRef.current = null; }, [idx]);
+
+  const getPt = (e) => {
+    const cvs = canvasRef.current;
+    const r = cvs.getBoundingClientRect();
+    const sx = r.width > 0 ? size.w / r.width : 1;
+    const sy = r.height > 0 ? size.h / r.height : 1;
+    return { x: (e.clientX - r.left) * sx, y: (e.clientY - r.top) * sy };
+  };
+  const onPointerDown = (e) => {
+    e.preventDefault();
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
+    const p = getPt(e);
+    drawingRef.current = { points: [p] };
+    setStrokes((s) => [...s, drawingRef.current]);
+  };
+  const onPointerMove = (e) => {
+    if (!drawingRef.current) return;
+    e.preventDefault();
+    drawingRef.current.points.push(getPt(e));
+    setStrokes((s) => s.slice());
+  };
+  const onPointerUp = (e) => {
+    if (!drawingRef.current) return;
+    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
+    drawingRef.current = null;
+  };
+  const clear = () => setStrokes([]);
+  const finish = () => {
+    if (!strokes.length) return;
+    if (!collected.has(idx)) {
+      const ns = new Set(collected); ns.add(idx); setCollected(ns);
+      onComplete && onComplete(2);
+      if (ns.size === TRACE_GLYPHS.length) onFinish && onFinish();
+    }
+    // 다음 글자
+    setIdx((i) => (i + 1) % TRACE_GLYPHS.length);
+  };
+
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
+      <div style={{ height: 88, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
+        <div style={{ fontSize: fontSize + 14, fontWeight: 900, color: t.text, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 36 }}>✏️</span>따라쓰기
+          <span style={{
+            fontSize: fontSize - 2, fontWeight: 900,
+            background: t.accent, color: t.text,
+            padding: '4px 14px', borderRadius: 16,
+            border: t.outline === 'none' ? 'none' : t.outline,
+            marginLeft: 6,
+          }}>Lv.2</span>
+        </div>
+      </div>
+
+      <div style={{ flex: 1, display: 'flex', gap: 16, padding: '0 24px', minHeight: 0 }}>
+        {/* 캔버스 (점선 글자 위에 그리기) */}
+        <div ref={containerRef} style={{
+          flex: 1,
+          background: '#fff',
+          border: t.outline === 'none' ? `4px solid ${color}` : t.outline,
+          borderRadius: t.cardRadius,
+          boxShadow: t.shadowSm,
+          position: 'relative',
+          overflow: 'hidden',
+        }}>
+          {/* 점선 글자 (가이드) */}
+          <div style={{
+            position: 'absolute', inset: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: Math.floor(Math.min(size.h || 400, (size.w || 600) * 0.7)),
+            lineHeight: 1, pointerEvents: 'none', userSelect: 'none',
+            color: 'transparent',
+            WebkitTextStrokeWidth: 3,
+            WebkitTextStrokeColor: 'rgba(0,0,0,0.25)',
+            fontWeight: 900,
+          }}>{cur.ch}</div>
+          <canvas ref={canvasRef}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+            style={{ position: 'absolute', inset: 0, touchAction: 'none', cursor: 'crosshair' }} />
+        </div>
+
+        {/* 우측: 글자명 + 액션 */}
+        <div style={{ flex: '0 0 auto', width: 160, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{
+            background: color, color: t.textOnColor,
+            border: t.outline === 'none' ? 'none' : t.outline,
+            borderRadius: t.cardRadius,
+            padding: '14px 12px', textAlign: 'center',
+            boxShadow: t.shadow,
+          }}>
+            <div style={{ fontSize: 96, fontWeight: 900, lineHeight: 1 }}>{cur.ch}</div>
+            <div style={{ fontSize: fontSize + 2, fontWeight: 900, marginTop: 6 }}>{cur.name}</div>
+          </div>
+          <button onClick={clear}
+            onPointerDown={(e) => e.currentTarget.animate([{transform:'scale(1)'},{transform:'scale(0.94)'}],{duration:120})}
+            style={{
+              height: 56, borderRadius: 18,
+              background: '#fff', color: t.text,
+              border: accentBorder,
+              cursor: 'pointer', fontFamily: 'inherit',
+              fontSize: fontSize, fontWeight: 900,
+              boxShadow: t.shadowSm,
+            }}>🔄 지우기</button>
+          <button onClick={finish}
+            onPointerDown={(e) => e.currentTarget.animate([{transform:'scale(1)'},{transform:'scale(0.94)'}],{duration:120})}
+            style={{
+              height: 56, borderRadius: 18,
+              background: t.cat.code, color: t.textOnColor,
+              border: t.outline === 'none' ? 'none' : t.outline,
+              cursor: 'pointer', fontFamily: 'inherit',
+              fontSize: fontSize, fontWeight: 900,
+              boxShadow: t.shadow,
+            }}>✅ 다 했어!</button>
+          <div style={{
+            background: '#fff', border: `2px solid rgba(0,0,0,0.10)`,
+            borderRadius: 14, padding: 10, textAlign: 'center',
+            fontSize: fontSize - 4, fontWeight: 800, color: t.textMuted,
+          }}>
+            진행: {collected.size}/{TRACE_GLYPHS.length}
+          </div>
+        </div>
+      </div>
+
+      {/* 하단: 글자 네비 */}
+      <div style={{ flex: '0 0 auto', padding: '10px 18px 14px', display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
+        {TRACE_GLYPHS.map((g, i) => {
+          const active = i === idx;
+          const learned = collected.has(i);
+          return (
+            <button key={i} onClick={() => setIdx(i)}
+              onPointerDown={(e) => e.currentTarget.animate([{transform:'scale(1)'},{transform:'scale(0.9)'}],{duration:120})}
+              style={{
+                width: 52, height: 52,
+                background: active ? color : '#fff',
+                color: active ? t.textOnColor : t.text,
+                border: active ? (t.outline === 'none' ? 'none' : t.outline) : `2px solid rgba(0,0,0,0.12)`,
+                borderRadius: 14,
+                fontSize: 26, fontWeight: 900,
+                cursor: 'pointer', fontFamily: 'inherit',
+                position: 'relative',
+                padding: 0,
+              }}>
+              {g.ch}
+              {learned && <span style={{ position: 'absolute', top: -6, right: -6, fontSize: 18 }}>⭐</span>}
+            </button>
+          );
+        })}
+      </div>
+
+      <VoiceGuide tone={t} show={voiceShow} text={`${cur.ch}, ${cur.name}`} fontSize={fontSize - 4} />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// 한글 — 글자 조합 (자음 + 모음 = 음절)
+// ─────────────────────────────────────────────────────────────
+const COMBINE_CONS = ['ㄱ','ㄴ','ㄷ','ㄹ','ㅁ','ㅂ','ㅅ','ㅇ','ㅈ','ㅎ'];
+const COMBINE_VOWS = ['ㅏ','ㅑ','ㅓ','ㅕ','ㅗ','ㅛ','ㅜ','ㅠ','ㅡ','ㅣ'];
+
+// 한글 조합: 초성 + 중성(+ 종성) → 음절 코드
+// 0xAC00 + (초 * 588) + (중 * 28) + 종
+const CHO_LIST = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+const JUNG_LIST = ['ㅏ','ㅐ','ㅑ','ㅒ','ㅓ','ㅔ','ㅕ','ㅖ','ㅗ','ㅘ','ㅙ','ㅚ','ㅛ','ㅜ','ㅝ','ㅞ','ㅟ','ㅠ','ㅡ','ㅢ','ㅣ'];
+function combineHangul(cho, jung) {
+  const c = CHO_LIST.indexOf(cho);
+  const j = JUNG_LIST.indexOf(jung);
+  if (c < 0 || j < 0) return '';
+  return String.fromCharCode(0xAC00 + c * 588 + j * 28);
+}
+
+function CombineActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
+  const t = tone;
+  const color = t.cat.hangul;
+  const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
+  const [cho, setCho] = useStateA('ㄱ');
+  const [jung, setJung] = useStateA('ㅏ');
+  const [collected, setCollected] = useStateA(() => new Set());
+  const wonRef = useRefA(false);
+
+  const syllable = combineHangul(cho, jung);
+  const key = cho + jung;
+
+  const confirm = () => {
+    if (!syllable) return;
+    if (!collected.has(key)) {
+      const ns = new Set(collected); ns.add(key); setCollected(ns);
+      onComplete && onComplete(1);
+      if (ns.size >= 10 && !wonRef.current) {
+        wonRef.current = true;
+        onComplete && onComplete(3);
+        onFinish && onFinish();
+      }
+    }
+  };
+
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
+      <div style={{ height: 88, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
+        <div style={{ fontSize: fontSize + 14, fontWeight: 900, color: t.text, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 36 }}>가</span>글자 조합
+          <span style={{
+            fontSize: fontSize - 2, fontWeight: 900,
+            background: t.accent, color: t.text,
+            padding: '4px 14px', borderRadius: 16,
+            border: t.outline === 'none' ? 'none' : t.outline,
+            marginLeft: 6,
+          }}>Lv.2</span>
+        </div>
+      </div>
+
+      {/* 조합 결과 큰 표시 */}
+      <div style={{ flex: 1, padding: '0 32px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 18, minHeight: 0 }}>
+        <CombineTile ch={cho} t={t} bg="#fff" border={accentBorder} />
+        <span style={{ fontSize: 56, fontWeight: 900, color: t.textMuted }}>+</span>
+        <CombineTile ch={jung} t={t} bg="#fff" border={accentBorder} />
+        <span style={{ fontSize: 56, fontWeight: 900, color: t.textMuted }}>=</span>
+        <button onClick={confirm}
+          onPointerDown={(e) => e.currentTarget.animate([{transform:'scale(1)'},{transform:'scale(0.95)'}],{duration:140})}
+          style={{
+            width: 220, height: 220,
+            background: color, color: t.textOnColor,
+            border: t.outline === 'none' ? 'none' : t.outline,
+            borderRadius: t.cardRadius + 12,
+            fontSize: 160, fontWeight: 900, lineHeight: 1,
+            cursor: 'pointer', fontFamily: 'inherit',
+            boxShadow: t.shadow,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            position: 'relative',
+            padding: 0,
+          }}>
+          {syllable || '?'}
+          {collected.has(key) && <span style={{ position: 'absolute', top: 12, right: 16, fontSize: 36 }}>⭐</span>}
+        </button>
+      </div>
+
+      {/* 자음/모음 선택바 */}
+      <div style={{ flex: '0 0 auto', padding: '8px 24px 6px', display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
+        {COMBINE_CONS.map((c) => {
+          const active = c === cho;
+          return (
+            <button key={c} onClick={() => setCho(c)}
+              style={{
+                width: 50, height: 50, borderRadius: 12,
+                background: active ? color : '#fff',
+                color: active ? t.textOnColor : t.text,
+                border: active ? (t.outline === 'none' ? 'none' : t.outline) : `2px solid rgba(0,0,0,0.12)`,
+                fontSize: 26, fontWeight: 900,
+                cursor: 'pointer', fontFamily: 'inherit',
+                padding: 0,
+              }}>{c}</button>
+          );
+        })}
+      </div>
+      <div style={{ flex: '0 0 auto', padding: '0 24px 14px', display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
+        {COMBINE_VOWS.map((v) => {
+          const active = v === jung;
+          return (
+            <button key={v} onClick={() => setJung(v)}
+              style={{
+                width: 50, height: 50, borderRadius: 12,
+                background: active ? t.accent : '#fff',
+                color: t.text,
+                border: active ? (t.outline === 'none' ? `3px solid ${t.text}` : t.outline) : `2px solid rgba(0,0,0,0.12)`,
+                fontSize: 26, fontWeight: 900,
+                cursor: 'pointer', fontFamily: 'inherit',
+                padding: 0,
+              }}>{v}</button>
+          );
+        })}
+      </div>
+
+      <VoiceGuide tone={t} show={voiceShow} text={syllable ? `${cho} 더하기 ${jung}은 ${syllable}` : '자음과 모음을 골라봐'} fontSize={fontSize - 4} />
+    </div>
+  );
+}
+
+function CombineTile({ ch, t, bg, border }) {
+  return (
+    <div style={{
+      width: 160, height: 160,
+      background: bg,
+      border, borderRadius: 24,
+      fontSize: 110, fontWeight: 900, lineHeight: 1,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      color: t.text,
+      boxShadow: t.shadowSm,
+    }}>{ch}</div>
+  );
+}
+
 function HangulActivity({ tone, subId, fontSize, onComplete, voiceShow }) {
   const t = tone;
   const isVowels = subId === 'vowels';
@@ -1426,6 +2182,481 @@ function HangulNavButton({ onClick, dir, tone }) {
 // ─────────────────────────────────────────────────────────────
 // 3-bis) 기초 덧셈 — 그림 + 숫자 등식 + 4지선다 + 10문항 진행
 // ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// 수학 — 뺄셈 (Lv.3)
+// ─────────────────────────────────────────────────────────────
+function SubtractionActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow }) {
+  const t = tone;
+  const color = t.cat.math;
+  const TOTAL_Q = 10;
+  const maxOperand = 9;
+
+  const newRound = () => {
+    const a = 2 + Math.floor(Math.random() * (maxOperand - 1));
+    const b = 1 + Math.floor(Math.random() * a);
+    const target = a - b;
+    const opts = new Set([target]);
+    let tries = 0;
+    while (opts.size < 4 && tries < 30) {
+      const delta = Math.floor(Math.random() * 5) - 2;
+      const cand = target + (delta === 0 ? (Math.random() < 0.5 ? -1 : 1) : delta);
+      if (cand >= 0 && cand <= maxOperand) opts.add(cand);
+      tries++;
+    }
+    while (opts.size < 4) opts.add(opts.size + target + 1);
+    const objIdx = Math.floor(Math.random() * MATH_OBJECTS.length);
+    return { a, b, target, objIdx, opts: Array.from(opts).sort((x, y) => x - y) };
+  };
+
+  const [round, setRound] = useStateA(newRound);
+  const [status, setStatus] = useStateA('q');
+  const [progress, setProgress] = useStateA(0);
+  const [picked, setPicked] = useStateA(null);
+  const [done, setDone] = useStateA(false);
+
+  const onPick = (n) => {
+    if (status !== 'q' || done) return;
+    if (n === round.target) {
+      setStatus('right'); setPicked(n);
+      onComplete && onComplete(1);
+      const nextN = progress + 1;
+      setProgress(nextN);
+      setTimeout(() => {
+        if (nextN >= TOTAL_Q) {
+          setDone(true);
+          onComplete && onComplete(3);
+          onFinish && onFinish();
+        } else {
+          setRound(newRound()); setStatus('q'); setPicked(null);
+        }
+      }, 1100);
+    } else {
+      setStatus('wrong'); setPicked(n);
+      setTimeout(() => { setStatus('q'); setPicked(null); }, 700);
+    }
+  };
+
+  const restart = () => { setProgress(0); setDone(false); setStatus('q'); setPicked(null); setRound(newRound()); };
+  const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
+
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
+      <div style={{ height: 88, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
+        <div style={{ fontSize: fontSize + 14, fontWeight: 900, color: t.text, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 36, color }}>➖</span>
+          기초 뺄셈
+          <span style={{
+            fontSize: fontSize - 2, fontWeight: 900,
+            background: t.accent, color: t.text,
+            padding: '4px 14px', borderRadius: 16,
+            border: t.outline === 'none' ? 'none' : t.outline,
+            marginLeft: 6,
+          }}>Lv.3</span>
+        </div>
+      </div>
+
+      {!done ? (
+        <React.Fragment>
+          <div style={{ flex: 1, padding: '0 32px', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0 }}>
+            <div style={{
+              width: '100%', height: '100%',
+              background: color,
+              border: t.outline === 'none' ? 'none' : t.outline,
+              borderRadius: t.cardRadius + 8,
+              padding: '22px 28px',
+              boxShadow: t.shadow,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              gap: 18,
+              transform: status === 'wrong' ? 'translateX(-6px)' : 'translateX(0)',
+              transition: 'transform 0.08s',
+              boxSizing: 'border-box',
+            }}>
+              {/* 시각화: a개에서 b개 지운 형태 */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center' }}>
+                <FruitGroupSub n={round.a} taken={round.b} obj={MATH_OBJECTS[round.objIdx]} tone={t} />
+                <span style={{ fontSize: 64, fontWeight: 900, color: t.textOnColor, lineHeight: 1 }}>=</span>
+                <div style={{
+                  width: 108, height: 108, borderRadius: 22,
+                  background: '#fff', color: t.text,
+                  fontSize: 76, fontWeight: 900, lineHeight: 1,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  border: t.outline === 'none' ? `4px dashed ${t.text}` : t.outline,
+                  flex: '0 0 auto',
+                }}>{status === 'right' ? round.target : '?'}</div>
+              </div>
+              <div style={{
+                background: '#fff',
+                border: accentBorder,
+                borderRadius: 18,
+                padding: '6px 22px',
+                fontSize: 40, fontWeight: 900, color: t.text,
+                fontVariantNumeric: 'tabular-nums',
+                letterSpacing: '0.04em',
+                boxShadow: t.shadowSm,
+              }}>
+                {round.a} - {round.b} = {status === 'right' ? round.target : '?'}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ flex: '0 0 auto', padding: '12px 32px 4px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+            {round.opts.map((n) => {
+              const isRight = status === 'right' && n === round.target;
+              const isWrong = status === 'wrong' && picked === n;
+              return (
+                <button key={n} onClick={() => onPick(n)}
+                  onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.92)' }], { duration: 130 })}
+                  style={{
+                    height: 92, fontSize: 56, fontWeight: 900,
+                    background: isRight ? t.cat.code : isWrong ? t.cat.shape : '#fff',
+                    color: t.text,
+                    border: t.outline === 'none' ? `4px solid ${t.text}` : t.outline,
+                    borderRadius: t.cardRadius,
+                    cursor: 'pointer', fontFamily: 'inherit',
+                    boxShadow: t.shadow,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}>{n}</button>
+              );
+            })}
+          </div>
+
+          <div style={{ flex: '0 0 auto', padding: '10px 32px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ flex: 1, display: 'flex', gap: 10, alignItems: 'center' }}>
+              {Array.from({ length: TOTAL_Q }).map((_, i) => (
+                <span key={i} style={{
+                  width: 22, height: 22, borderRadius: 11,
+                  background: i < progress ? color : '#fff',
+                  border: i < progress ? (t.outline === 'none' ? 'none' : `2px solid ${t.text}`) : `2px solid rgba(0,0,0,0.18)`,
+                  display: 'inline-block',
+                }} />
+              ))}
+            </div>
+            <div style={{ fontSize: fontSize, fontWeight: 900, color: t.text, fontVariantNumeric: 'tabular-nums', minWidth: 70, textAlign: 'right' }}>
+              {progress}/{TOTAL_Q}
+            </div>
+          </div>
+        </React.Fragment>
+      ) : (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, padding: '0 32px 24px' }}>
+          <div style={{ fontSize: 160, lineHeight: 1, animation: 'kw-pop 0.6s cubic-bezier(.34,1.56,.64,1) both' }}>🎉</div>
+          <div style={{ fontSize: fontSize + 28, fontWeight: 900, color: t.text }}>다 풀었어!</div>
+          <button onClick={restart}
+            style={{
+              background: color, color: t.textOnColor,
+              border: t.outline === 'none' ? 'none' : t.outline,
+              borderRadius: 32, padding: '18px 36px', marginTop: 8,
+              fontSize: fontSize + 6, fontWeight: 900,
+              cursor: 'pointer', fontFamily: 'inherit',
+              boxShadow: t.shadow,
+            }}>🔄 다시 풀기</button>
+        </div>
+      )}
+      <VoiceGuide tone={t} show={voiceShow}
+        text={done ? '잘했어!' : status === 'right' ? '정답!' : `${round.a} 빼기 ${round.b}는?`}
+        fontSize={fontSize - 4} />
+    </div>
+  );
+}
+
+function FruitGroupSub({ n, taken, obj, tone }) {
+  const t = tone;
+  const cols = n <= 5 ? n : Math.ceil(n / 2);
+  const size = n <= 4 ? 46 : 36;
+  return (
+    <div style={{
+      background: '#fff',
+      border: t.outline === 'none' ? 'none' : t.outline,
+      borderRadius: 18, padding: '10px 12px',
+      minWidth: 96, minHeight: 96,
+      display: 'grid',
+      gridTemplateColumns: `repeat(${cols}, 1fr)`,
+      gap: 4, placeItems: 'center',
+      boxShadow: 'inset 0 4px 0 rgba(0,0,0,0.05)',
+      flex: '0 0 auto',
+    }}>
+      {Array.from({ length: n }).map((_, i) => (
+        <span key={i} style={{
+          fontSize: size, lineHeight: 1,
+          opacity: i >= n - taken ? 0.28 : 1,
+          textDecoration: i >= n - taken ? 'line-through' : 'none',
+          textDecorationColor: '#C92A2A',
+          textDecorationThickness: 4,
+        }}>{obj}</span>
+      ))}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// 수학 — 크기 비교 (Lv.2)
+// ─────────────────────────────────────────────────────────────
+function CompareActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
+  const t = tone;
+  const color = t.cat.math;
+  const TOTAL_Q = 10;
+  const newRound = () => {
+    let a = 1 + Math.floor(Math.random() * 9);
+    let b = 1 + Math.floor(Math.random() * 9);
+    while (a === b) b = 1 + Math.floor(Math.random() * 9);
+    const objIdx = Math.floor(Math.random() * MATH_OBJECTS.length);
+    const objIdx2 = Math.floor(Math.random() * MATH_OBJECTS.length);
+    const askMore = Math.random() < 0.5;
+    return { a, b, objIdx, objIdx2, askMore };
+  };
+  const [round, setRound] = useStateA(newRound);
+  const [status, setStatus] = useStateA('q');
+  const [picked, setPicked] = useStateA(null);
+  const [progress, setProgress] = useStateA(0);
+  const [done, setDone] = useStateA(false);
+
+  const correctSide = round.askMore ? (round.a > round.b ? 'L' : 'R') : (round.a < round.b ? 'L' : 'R');
+
+  const onPick = (side) => {
+    if (status !== 'q' || done) return;
+    if (side === correctSide) {
+      setStatus('right'); setPicked(side);
+      onComplete && onComplete(1);
+      const nextN = progress + 1;
+      setProgress(nextN);
+      setTimeout(() => {
+        if (nextN >= TOTAL_Q) { setDone(true); onComplete && onComplete(3); onFinish && onFinish(); }
+        else { setRound(newRound()); setStatus('q'); setPicked(null); }
+      }, 900);
+    } else {
+      setStatus('wrong'); setPicked(side);
+      setTimeout(() => { setStatus('q'); setPicked(null); }, 650);
+    }
+  };
+  const restart = () => { setProgress(0); setDone(false); setStatus('q'); setPicked(null); setRound(newRound()); };
+  const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
+
+  const renderGroup = (n, obj, side) => {
+    const isRight = status === 'right' && side === correctSide;
+    const isWrong = status === 'wrong' && side === picked;
+    return (
+      <button onClick={() => onPick(side)}
+        onPointerDown={(e) => e.currentTarget.animate([{transform:'scale(1)'},{transform:'scale(0.95)'}],{duration:130})}
+        style={{
+          flex: 1, height: '100%',
+          background: isRight ? t.cat.code : isWrong ? t.cat.shape : '#fff',
+          border: t.outline === 'none' ? `4px solid ${t.text}` : t.outline,
+          borderRadius: t.cardRadius + 4,
+          cursor: 'pointer', fontFamily: 'inherit',
+          boxShadow: t.shadow,
+          display: 'flex', flexWrap: 'wrap',
+          alignItems: 'center', justifyContent: 'center',
+          gap: 8, padding: 16,
+          transition: 'background 0.2s',
+        }}>
+        {Array.from({ length: n }).map((_, i) => (
+          <span key={i} style={{ fontSize: 56, lineHeight: 1, animation: `kw-pop 0.4s ease ${i * 0.04}s both` }}>{obj}</span>
+        ))}
+      </button>
+    );
+  };
+
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
+      <div style={{ height: 88, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
+        <div style={{ fontSize: fontSize + 14, fontWeight: 900, color: t.text, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 36 }}>⚖️</span>크기 비교
+          <span style={{
+            fontSize: fontSize - 2, fontWeight: 900,
+            background: t.accent, color: t.text,
+            padding: '4px 14px', borderRadius: 16,
+            border: t.outline === 'none' ? 'none' : t.outline,
+            marginLeft: 6,
+          }}>Lv.2</span>
+        </div>
+      </div>
+      {!done ? (
+        <React.Fragment>
+          <div style={{ flex: '0 0 auto', textAlign: 'center', padding: '4px 32px 12px', fontSize: fontSize + 8, fontWeight: 900, color: t.text }}>
+            어느 쪽이 더 <span style={{ color }}>{round.askMore ? '많을까' : '적을까'}</span>?
+          </div>
+          <div style={{ flex: 1, padding: '0 24px 12px', display: 'flex', gap: 18, minHeight: 0 }}>
+            {renderGroup(round.a, MATH_OBJECTS[round.objIdx], 'L')}
+            {renderGroup(round.b, MATH_OBJECTS[round.objIdx2], 'R')}
+          </div>
+          <div style={{ flex: '0 0 auto', padding: '10px 32px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ flex: 1, display: 'flex', gap: 10 }}>
+              {Array.from({ length: TOTAL_Q }).map((_, i) => (
+                <span key={i} style={{
+                  width: 22, height: 22, borderRadius: 11,
+                  background: i < progress ? color : '#fff',
+                  border: i < progress ? (t.outline === 'none' ? 'none' : `2px solid ${t.text}`) : `2px solid rgba(0,0,0,0.18)`,
+                  display: 'inline-block',
+                }} />
+              ))}
+            </div>
+            <div style={{ fontSize: fontSize, fontWeight: 900, color: t.text, minWidth: 70, textAlign: 'right' }}>{progress}/{TOTAL_Q}</div>
+          </div>
+        </React.Fragment>
+      ) : (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18 }}>
+          <div style={{ fontSize: 160, animation: 'kw-pop 0.6s both' }}>🎉</div>
+          <div style={{ fontSize: fontSize + 28, fontWeight: 900, color: t.text }}>다 맞췄어!</div>
+          <button onClick={restart} style={{
+            background: color, color: t.textOnColor,
+            border: t.outline === 'none' ? 'none' : t.outline,
+            borderRadius: 32, padding: '18px 36px',
+            fontSize: fontSize + 6, fontWeight: 900,
+            cursor: 'pointer', fontFamily: 'inherit',
+            boxShadow: t.shadow,
+          }}>🔄 다시 풀기</button>
+        </div>
+      )}
+      <VoiceGuide tone={t} show={voiceShow}
+        text={done ? '잘했어!' : `어느 쪽이 더 ${round.askMore ? '많을까' : '적을까'}?`}
+        fontSize={fontSize - 4} />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// 수학 — 순서 맞추기 (Lv.2)
+// ─────────────────────────────────────────────────────────────
+function OrderActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
+  const t = tone;
+  const color = t.cat.math;
+  const TOTAL_Q = 10;
+  const newRound = () => {
+    const start = 1 + Math.floor(Math.random() * 13); // 1~13 시작 → 5개 시퀀스
+    const seq = [start, start+1, start+2, start+3, start+4];
+    const missingIdx = 1 + Math.floor(Math.random() * 3); // 가운데 3개 중 1개
+    const target = seq[missingIdx];
+    const opts = new Set([target]);
+    while (opts.size < 4) opts.add(Math.max(1, target + (Math.floor(Math.random() * 5) - 2)));
+    return { seq, missingIdx, target, opts: Array.from(opts).sort(() => Math.random() - 0.5) };
+  };
+  const [round, setRound] = useStateA(newRound);
+  const [status, setStatus] = useStateA('q');
+  const [picked, setPicked] = useStateA(null);
+  const [progress, setProgress] = useStateA(0);
+  const [done, setDone] = useStateA(false);
+
+  const onPick = (n) => {
+    if (status !== 'q' || done) return;
+    if (n === round.target) {
+      setStatus('right'); setPicked(n);
+      onComplete && onComplete(1);
+      const nextN = progress + 1;
+      setProgress(nextN);
+      setTimeout(() => {
+        if (nextN >= TOTAL_Q) { setDone(true); onComplete && onComplete(3); onFinish && onFinish(); }
+        else { setRound(newRound()); setStatus('q'); setPicked(null); }
+      }, 900);
+    } else {
+      setStatus('wrong'); setPicked(n);
+      setTimeout(() => { setStatus('q'); setPicked(null); }, 650);
+    }
+  };
+  const restart = () => { setProgress(0); setDone(false); setStatus('q'); setPicked(null); setRound(newRound()); };
+  const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
+
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
+      <div style={{ height: 88, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
+        <div style={{ fontSize: fontSize + 14, fontWeight: 900, color: t.text, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 36 }}>🔢</span>순서 맞추기
+          <span style={{
+            fontSize: fontSize - 2, fontWeight: 900,
+            background: t.accent, color: t.text,
+            padding: '4px 14px', borderRadius: 16,
+            border: t.outline === 'none' ? 'none' : t.outline,
+            marginLeft: 6,
+          }}>Lv.2</span>
+        </div>
+      </div>
+      {!done ? (
+        <React.Fragment>
+          <div style={{ flex: 1, padding: '0 32px', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0 }}>
+            <div style={{
+              width: '100%', maxWidth: 820,
+              background: color,
+              border: t.outline === 'none' ? 'none' : t.outline,
+              borderRadius: t.cardRadius + 8,
+              padding: '24px 28px',
+              boxShadow: t.shadow,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              gap: 14,
+              transform: status === 'wrong' ? 'translateX(-6px)' : 'translateX(0)',
+              transition: 'transform 0.08s',
+            }}>
+              {round.seq.map((n, i) => {
+                const isMissing = i === round.missingIdx;
+                return (
+                  <span key={i} style={{
+                    width: 110, height: 110, borderRadius: 24,
+                    background: isMissing ? (status === 'right' ? '#fff' : 'rgba(255,255,255,0.5)') : '#fff',
+                    color: t.text,
+                    border: isMissing ? `4px dashed ${t.text}` : `3px solid ${t.text}`,
+                    fontSize: 64, fontWeight: 900, lineHeight: 1,
+                    fontVariantNumeric: 'tabular-nums',
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    animation: `kw-pop 0.4s ease ${i * 0.05}s both`,
+                  }}>
+                    {isMissing ? (status === 'right' ? round.target : '?') : n}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+          <div style={{ flex: '0 0 auto', padding: '14px 32px 4px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+            {round.opts.map((n) => {
+              const isRight = status === 'right' && n === round.target;
+              const isWrong = status === 'wrong' && picked === n;
+              return (
+                <button key={n} onClick={() => onPick(n)}
+                  onPointerDown={(e) => e.currentTarget.animate([{transform:'scale(1)'},{transform:'scale(0.92)'}],{duration:130})}
+                  style={{
+                    height: 92, fontSize: 56, fontWeight: 900,
+                    background: isRight ? t.cat.code : isWrong ? t.cat.shape : '#fff',
+                    color: t.text,
+                    border: t.outline === 'none' ? `4px solid ${t.text}` : t.outline,
+                    borderRadius: t.cardRadius,
+                    cursor: 'pointer', fontFamily: 'inherit',
+                    boxShadow: t.shadow,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}>{n}</button>
+              );
+            })}
+          </div>
+          <div style={{ flex: '0 0 auto', padding: '12px 32px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ flex: 1, display: 'flex', gap: 10 }}>
+              {Array.from({ length: TOTAL_Q }).map((_, i) => (
+                <span key={i} style={{
+                  width: 22, height: 22, borderRadius: 11,
+                  background: i < progress ? color : '#fff',
+                  border: i < progress ? (t.outline === 'none' ? 'none' : `2px solid ${t.text}`) : `2px solid rgba(0,0,0,0.18)`,
+                  display: 'inline-block',
+                }} />
+              ))}
+            </div>
+            <div style={{ fontSize: fontSize, fontWeight: 900, color: t.text, minWidth: 70, textAlign: 'right' }}>{progress}/{TOTAL_Q}</div>
+          </div>
+        </React.Fragment>
+      ) : (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18 }}>
+          <div style={{ fontSize: 160, animation: 'kw-pop 0.6s both' }}>🎉</div>
+          <div style={{ fontSize: fontSize + 28, fontWeight: 900, color: t.text }}>다 맞췄어!</div>
+          <button onClick={restart} style={{
+            background: color, color: t.textOnColor,
+            border: t.outline === 'none' ? 'none' : t.outline,
+            borderRadius: 32, padding: '18px 36px',
+            fontSize: fontSize + 6, fontWeight: 900,
+            cursor: 'pointer', fontFamily: 'inherit',
+            boxShadow: t.shadow,
+          }}>🔄 다시 풀기</button>
+        </div>
+      )}
+      <VoiceGuide tone={t} show={voiceShow}
+        text={done ? '잘했어!' : '빈칸에 들어갈 수는?'}
+        fontSize={fontSize - 4} />
+    </div>
+  );
+}
+
 function AdditionActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow }) {
   const t = tone;
   const color = t.cat.math;
@@ -1667,8 +2898,8 @@ const MATH_OBJECTS = ['🍎','🍊','🍋','🍌','🍇','🍓','🍑','🍒'];
 function MathActivity({ tone, subId, fontSize, onComplete, voiceShow }) {
   const t = tone;
   const color = t.cat.math;
-  const maxN = subId === 'count10' ? 10 : 5;
-  const minN = subId === 'count10' ? 6 : 1;
+  const maxN = subId === 'count20' ? 20 : subId === 'count10' ? 10 : 5;
+  const minN = subId === 'count20' ? 11 : subId === 'count10' ? 6 : 1;
   const newRound = () => {
     const target = Math.floor(Math.random() * (maxN - minN + 1)) + minN;
     const objIdx = Math.floor(Math.random() * MATH_OBJECTS.length);
@@ -1804,13 +3035,13 @@ function DrumActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
     setPressed(pad.id);
     playDrum(pad.id);
     setTimeout(() => setPressed((p) => (p === pad.id ? null : p)), 150);
+    // 자유연주 — 끝나지 않고 별만 보너스로 받음
     if (!playedSet.has(pad.id)) {
       const next = new Set(playedSet); next.add(pad.id);
       setPlayedSet(next);
       if (next.size === DRUM_PADS.length && !wonRef.current) {
         wonRef.current = true;
         onComplete && onComplete(3);
-        onFinish && onFinish();
       } else if (next.size === 2) {
         onComplete && onComplete(1);
       }
@@ -1899,13 +3130,13 @@ function XyloActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
     setPressed(bar.id);
     playTone(bar.freq, { dur: 0.9, peak: 0.42, type: 'sine' });
     setTimeout(() => setPressed((p) => (p === bar.id ? null : p)), 180);
+    // 자유연주 — 끝나지 않고 별만 보너스로 받음
     if (!playedSet.has(bar.id)) {
       const next = new Set(playedSet); next.add(bar.id);
       setPlayedSet(next);
       if (next.size === XYLO_BARS.length && !wonRef.current) {
         wonRef.current = true;
         onComplete && onComplete(3);
-        onFinish && onFinish();
       } else if (next.size === 4) {
         onComplete && onComplete(1);
       }
@@ -2008,7 +3239,7 @@ function MusicActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow 
     playSound(note.freq);
     setTimeout(() => setPressed((p) => (p === note.id ? null : p)), 180);
 
-    // 자유연주 — 8가지 누르면 별
+    // 자유연주 — 끝나지 않고 별만 보너스로 받음
     if (mode === 'free') {
       const isWhite = PIANO_WHITE.some((w) => w.id === note.id);
       if (isWhite) {
@@ -2016,7 +3247,7 @@ function MusicActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow 
         if (!next.has(note.id)) {
           next.add(note.id);
           setPlayedCount(next);
-          if (next.size === PIANO_WHITE.length) { onComplete && onComplete(3); onFinish && onFinish(); }
+          if (next.size === PIANO_WHITE.length) onComplete && onComplete(3);
           else if (next.size === 4) onComplete && onComplete(1);
         }
       }
@@ -2929,15 +4160,15 @@ function MemoryActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow
 // ─────────────────────────────────────────────────────────────
 // 6) 코딩 놀이 — 5×5 격자맵 + 명령 큐 + 실행
 // ─────────────────────────────────────────────────────────────
-const CODING_GRID = 5;
-const CODING_LEVEL = {
-  start: { x: 0, y: 0 },
-  goal:  { x: 4, y: 4 },
-  obstacles: [
-    { x: 3, y: 0 }, { x: 1, y: 1 }, { x: 3, y: 2 },
-    { x: 2, y: 3 }, { x: 0, y: 4 },
-  ],
-};
+export const CODING_GRID = 5;
+// 직접조종(한 칸 즉시 이동) 5스테이지 — 장애물 점증
+export const CODING_LEVELS = [
+  { id: 1, name: '똑바로 걷기', start: { x: 0, y: 2 }, goal: { x: 4, y: 2 }, obstacles: [] },
+  { id: 2, name: '한 번 꺾기', start: { x: 0, y: 0 }, goal: { x: 3, y: 3 }, obstacles: [{ x: 2, y: 0 }] },
+  { id: 3, name: 'ㄹ자 길',   start: { x: 0, y: 0 }, goal: { x: 4, y: 4 }, obstacles: [{ x: 2, y: 1 }, { x: 1, y: 3 }] },
+  { id: 4, name: '장애물 피하기', start: { x: 0, y: 2 }, goal: { x: 4, y: 2 }, obstacles: [{ x: 2, y: 1 }, { x: 2, y: 2 }] },
+  { id: 5, name: '미로',       start: { x: 0, y: 4 }, goal: { x: 4, y: 0 }, obstacles: [{ x: 1, y: 1 }, { x: 2, y: 2 }, { x: 3, y: 3 }, { x: 1, y: 3 }] },
+];
 const CODING_DIRS = [
   { id: 'up',    label: '⬆', dx: 0,  dy: -1, name: '위' },
   { id: 'down',  label: '⬇', dx: 0,  dy: 1,  name: '아래' },
@@ -2945,32 +4176,79 @@ const CODING_DIRS = [
   { id: 'right', label: '➡', dx: 1,  dy: 0,  name: '오른쪽' },
 ];
 
+// 한 칸 이동 판정(순수). 격자 밖/장애물이면 제자리 + blocked=true.
+export function resolveMove(pos, dirId, gridSize, obstacles) {
+  const dir = CODING_DIRS.find((d) => d.id === dirId);
+  if (!dir) return { x: pos.x, y: pos.y, blocked: true };
+  const nx = pos.x + dir.dx, ny = pos.y + dir.dy;
+  const oob = nx < 0 || nx >= gridSize || ny < 0 || ny >= gridSize;
+  const hit = obstacles.some((o) => o.x === nx && o.y === ny);
+  if (oob || hit) return { x: pos.x, y: pos.y, blocked: true };
+  return { x: nx, y: ny, blocked: false };
+}
+
+// BFS로 start→goal 도달 가능 여부(순수) — 스테이지 설계 검증용.
+export function isSolvable(level, gridSize) {
+  const key = (x, y) => `${x},${y}`;
+  const blocked = new Set(level.obstacles.map((o) => key(o.x, o.y)));
+  const seen = new Set([key(level.start.x, level.start.y)]);
+  const queue = [level.start];
+  const dirs = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+  while (queue.length) {
+    const p = queue.shift();
+    if (p.x === level.goal.x && p.y === level.goal.y) return true;
+    for (const [dx, dy] of dirs) {
+      const nx = p.x + dx, ny = p.y + dy;
+      if (nx < 0 || nx >= gridSize || ny < 0 || ny >= gridSize) continue;
+      const k = key(nx, ny);
+      if (blocked.has(k) || seen.has(k)) continue;
+      seen.add(k);
+      queue.push({ x: nx, y: ny });
+    }
+  }
+  return false;
+}
+// 반복 블록: 다음 1개 명령을 N회 반복
+const CODING_REPEATS = [
+  { id: 'rep2', n: 2, label: '🔁2' },
+  { id: 'rep3', n: 3, label: '🔁3' },
+];
+
 function CodingActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
   const t = tone;
   const color = t.cat.code;
-  const level = CODING_LEVEL;
-  const [commands, setCommands] = useStateA([]);
+
+  const loadStage = () => {
+    try { return Math.max(0, Math.min(CODING_LEVELS.length - 1, parseInt(localStorage.getItem('kw-coding-stage') || '0'))); }
+    catch { return 0; }
+  };
+  const [stageIdx, setStageIdx] = useStateA(loadStage);
+  const level = CODING_LEVELS[stageIdx];
+
+  const [commands, setCommands] = useStateA([]); // 'up'|'down'|'left'|'right'|'rep2'|'rep3'
   const [charPos, setCharPos] = useStateA(level.start);
-  const [status, setStatus] = useStateA('idle'); // idle | running | success | fail
+  const [status, setStatus] = useStateA('idle');
   const [stepIdx, setStepIdx] = useStateA(-1);
   const wonRef = useRefA(false);
 
-  const reset = () => {
+  // 스테이지 변경 시 리셋
+  useEffectA(() => {
     setCommands([]);
     setCharPos(level.start);
     setStatus('idle');
     setStepIdx(-1);
-  };
-  const softReset = () => {
-    setCharPos(level.start);
-    setStatus('idle');
-    setStepIdx(-1);
-  };
+    wonRef.current = false;
+  }, [stageIdx]);
 
-  const addCmd = (dirId) => {
+  const reset = () => {
+    setCommands([]); setCharPos(level.start); setStatus('idle'); setStepIdx(-1);
+  };
+  const softReset = () => { setCharPos(level.start); setStatus('idle'); setStepIdx(-1); };
+
+  const addCmd = (id) => {
     if (status === 'running') return;
     if (status === 'success' || status === 'fail') softReset();
-    setCommands((c) => [...c, dirId]);
+    setCommands((c) => [...c, id]);
   };
   const removeCmd = (i) => {
     if (status === 'running') return;
@@ -2984,25 +4262,69 @@ function CodingActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
     setStepIdx(-1);
     let pos = level.start;
     await new Promise((r) => setTimeout(r, 200));
-    for (let i = 0; i < commands.length; i++) {
+    // 반복 블록 처리: repN 다음 dir 1개를 N회
+    let i = 0;
+    while (i < commands.length) {
       setStepIdx(i);
-      const dir = CODING_DIRS.find((d) => d.id === commands[i]);
-      const next = { x: pos.x + dir.dx, y: pos.y + dir.dy };
-      // 경계 / 장애물 검사
-      const oob = next.x < 0 || next.x >= CODING_GRID || next.y < 0 || next.y >= CODING_GRID;
-      const hit = level.obstacles.some((o) => o.x === next.x && o.y === next.y);
-      if (oob || hit) { setStatus('fail'); return; }
-      pos = next;
-      setCharPos(pos);
-      await new Promise((r) => setTimeout(r, 440));
-      if (pos.x === level.goal.x && pos.y === level.goal.y) {
-        setStatus('success');
-        if (!wonRef.current) { wonRef.current = true; onComplete && onComplete(3); onFinish && onFinish(); }
-        return;
+      const c = commands[i];
+      const rep = CODING_REPEATS.find((r) => r.id === c);
+      if (rep) {
+        const nextC = commands[i + 1];
+        const dir = CODING_DIRS.find((d) => d.id === nextC);
+        if (!dir) { setStatus('fail'); return; }
+        for (let k = 0; k < rep.n; k++) {
+          const next = { x: pos.x + dir.dx, y: pos.y + dir.dy };
+          const oob = next.x < 0 || next.x >= CODING_GRID || next.y < 0 || next.y >= CODING_GRID;
+          const hit = level.obstacles.some((o) => o.x === next.x && o.y === next.y);
+          if (oob || hit) { setStatus('fail'); return; }
+          pos = next; setCharPos(pos);
+          await new Promise((r) => setTimeout(r, 440));
+          if (pos.x === level.goal.x && pos.y === level.goal.y) { stageWin(); return; }
+        }
+        i += 2;
+      } else {
+        const dir = CODING_DIRS.find((d) => d.id === c);
+        if (!dir) { setStatus('fail'); return; }
+        const next = { x: pos.x + dir.dx, y: pos.y + dir.dy };
+        const oob = next.x < 0 || next.x >= CODING_GRID || next.y < 0 || next.y >= CODING_GRID;
+        const hit = level.obstacles.some((o) => o.x === next.x && o.y === next.y);
+        if (oob || hit) { setStatus('fail'); return; }
+        pos = next; setCharPos(pos);
+        await new Promise((r) => setTimeout(r, 440));
+        if (pos.x === level.goal.x && pos.y === level.goal.y) { stageWin(); return; }
+        i += 1;
       }
     }
-    // 명령 다 썼는데 목표 못 감
     setStatus('fail');
+  };
+
+  const stageWin = () => {
+    setStatus('success');
+    if (!wonRef.current) {
+      wonRef.current = true;
+      onComplete && onComplete(3);
+      try {
+        const cleared = parseInt(localStorage.getItem('kw-coding-cleared') || '0');
+        if (stageIdx + 1 > cleared) localStorage.setItem('kw-coding-cleared', String(stageIdx + 1));
+      } catch {}
+    }
+  };
+
+  const nextStage = () => {
+    if (stageIdx < CODING_LEVELS.length - 1) {
+      const next = stageIdx + 1;
+      setStageIdx(next);
+      try { localStorage.setItem('kw-coding-stage', String(next)); } catch {}
+    } else {
+      onFinish && onFinish();
+    }
+  };
+  const prevStage = () => {
+    if (stageIdx > 0) {
+      const next = stageIdx - 1;
+      setStageIdx(next);
+      try { localStorage.setItem('kw-coding-stage', String(next)); } catch {}
+    }
   };
 
   // 격자 셀 크기
@@ -3023,7 +4345,30 @@ function CodingActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
             padding: '4px 14px', borderRadius: 16,
             border: t.outline === 'none' ? 'none' : t.outline,
             marginLeft: 6,
-          }}>스테이지 1</span>
+          }}>스테이지 {stageIdx + 1}/{CODING_LEVELS.length} · {level.name}</span>
+        </div>
+        {/* 스테이지 이동 */}
+        <div style={{ position: 'absolute', top: 18, right: 130, display: 'flex', gap: 8 }}>
+          <button onClick={prevStage} disabled={stageIdx === 0}
+            style={{
+              width: 52, height: 52, borderRadius: 26,
+              background: '#fff', border: accentBorder,
+              cursor: stageIdx === 0 ? 'default' : 'pointer',
+              fontSize: 22, fontFamily: 'inherit', color: t.text,
+              opacity: stageIdx === 0 ? 0.4 : 1,
+              boxShadow: t.shadowSm,
+            }}>◀</button>
+          <button onClick={nextStage}
+            style={{
+              width: 52, height: 52, borderRadius: 26,
+              background: status === 'success' ? t.cat.code : '#fff',
+              color: status === 'success' ? t.textOnColor : t.text,
+              border: accentBorder,
+              cursor: 'pointer',
+              fontSize: 22, fontFamily: 'inherit',
+              boxShadow: status === 'success' ? t.shadow : t.shadowSm,
+              animation: status === 'success' ? 'kw-pulse 0.9s ease-in-out infinite' : 'none',
+            }}>▶</button>
         </div>
       </div>
 
@@ -3121,14 +4466,17 @@ function CodingActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
               )}
               {commands.map((c, i) => {
                 const dir = CODING_DIRS.find((d) => d.id === c);
+                const rep = CODING_REPEATS.find((r) => r.id === c);
+                const label = dir ? dir.label : rep ? rep.label : '?';
+                const isRep = !!rep;
                 const active = stepIdx === i;
                 return (
                   <button key={i} onClick={() => removeCmd(i)} aria-label={`명령 ${i + 1} 삭제`}
                     onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.88)' }], { duration: 130 })}
                     style={{
                       width: 52, height: 52,
-                      fontSize: 30, lineHeight: 1,
-                      background: active ? t.accent : color,
+                      fontSize: isRep ? 22 : 30, lineHeight: 1,
+                      background: active ? t.accent : isRep ? t.cat.shape : color,
                       color: active ? t.text : t.textOnColor,
                       border: active ? `3px solid ${t.text}` : (t.outline === 'none' ? 'none' : t.outline),
                       borderRadius: 14,
@@ -3136,7 +4484,8 @@ function CodingActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
                       padding: 0,
                       boxShadow: active ? `0 0 0 4px ${t.accent}55, ${t.shadow}` : t.shadowSm,
                       transition: 'background 0.15s, box-shadow 0.15s',
-                    }}>{dir.label}</button>
+                      fontWeight: 900,
+                    }}>{label}</button>
                 );
               })}
             </div>
@@ -3179,11 +4528,11 @@ function CodingActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
         </div>
       </div>
 
-      {/* ─ 하단 방향 블록 ─ */}
+      {/* ─ 하단 방향 + 반복 블록 ─ */}
       <div style={{
         flex: '0 0 auto',
         padding: '14px 24px 18px',
-        display: 'flex', justifyContent: 'center', gap: 14,
+        display: 'flex', justifyContent: 'center', gap: 14, flexWrap: 'wrap',
       }}>
         {CODING_DIRS.map((d) => (
           <button key={d.id} onClick={() => addCmd(d.id)} aria-label={d.name}
@@ -3200,11 +4549,25 @@ function CodingActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
               boxShadow: t.shadow,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               padding: 0,
-              position: 'relative',
-            }}>
-            {d.label}
-            <span style={{ position: 'absolute', bottom: 4, right: 6, fontSize: 11, fontWeight: 800, color: t.textMuted }}>drag</span>
-          </button>
+            }}>{d.label}</button>
+        ))}
+        {level.allowRepeat && CODING_REPEATS.map((r) => (
+          <button key={r.id} onClick={() => addCmd(r.id)} aria-label={`반복 ${r.n}`}
+            onPointerDown={(e) => e.currentTarget.animate(
+              [{ transform: 'scale(1) translateY(0)' }, { transform: 'scale(0.92) translateY(2px)' }],
+              { duration: 130 })}
+            style={{
+              width: 80, height: 80,
+              background: t.cat.shape, color: t.textOnColor,
+              border: t.outline === 'none' ? `4px solid ${t.text}` : t.outline,
+              borderRadius: 18,
+              fontSize: 28, lineHeight: 1,
+              cursor: 'pointer', fontFamily: 'inherit',
+              boxShadow: t.shadow,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: 0,
+              fontWeight: 900,
+            }}>{r.label}</button>
         ))}
       </div>
 
@@ -3243,12 +4606,18 @@ function Activity({ tone, cat, sub, fontSize, onComplete, onFinish, voiceShow })
     return <ColoringActivity tone={tone} subId={sub?.id || 'cat'} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
   }
   if (cat.id === 'hangul') {
-    if (sub?.id === 'words') return <HangulWordsActivity tone={tone} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
+    if (sub?.id === 'words')   return <HangulWordsActivity tone={tone} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
+    if (sub?.id === 'trace')   return <TraceActivity       tone={tone} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
+    if (sub?.id === 'combine') return <CombineActivity     tone={tone} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
     return <HangulActivity tone={tone} subId={sub?.id || 'consonants'} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
   }
-  if (cat.id === 'math')   return (sub?.id === 'add5' || sub?.id === 'add10')
-    ? <AdditionActivity tone={tone} subId={sub?.id || 'add5'} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />
-    : <MathActivity     tone={tone} subId={sub?.id || 'count5'} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
+  if (cat.id === 'math') {
+    if (sub?.id === 'add5' || sub?.id === 'add10') return <AdditionActivity    tone={tone} subId={sub?.id} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
+    if (sub?.id === 'sub5')                         return <SubtractionActivity tone={tone} subId={sub?.id} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
+    if (sub?.id === 'compare')                      return <CompareActivity     tone={tone} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
+    if (sub?.id === 'order')                        return <OrderActivity       tone={tone} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
+    return <MathActivity tone={tone} subId={sub?.id || 'count5'} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
+  }
   if (cat.id === 'music') {
     if (sub?.id === 'drum') return <DrumActivity tone={tone} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
     if (sub?.id === 'xylo') return <XyloActivity tone={tone} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
