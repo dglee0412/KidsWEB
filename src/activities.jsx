@@ -4208,12 +4208,6 @@ export function isSolvable(level, gridSize) {
   }
   return false;
 }
-// 반복 블록: 다음 1개 명령을 N회 반복
-const CODING_REPEATS = [
-  { id: 'rep2', n: 2, label: '🔁2' },
-  { id: 'rep3', n: 3, label: '🔁3' },
-];
-
 function CodingActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
   const t = tone;
   const color = t.cat.code;
@@ -4225,90 +4219,43 @@ function CodingActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
   const [stageIdx, setStageIdx] = useStateA(loadStage);
   const level = CODING_LEVELS[stageIdx];
 
-  const [commands, setCommands] = useStateA([]); // 'up'|'down'|'left'|'right'|'rep2'|'rep3'
   const [charPos, setCharPos] = useStateA(level.start);
-  const [status, setStatus] = useStateA('idle');
-  const [stepIdx, setStepIdx] = useStateA(-1);
+  const [status, setStatus] = useStateA('idle'); // 'idle' | 'success'
+  const [bump, setBump] = useStateA(false);       // 충돌 흔들림
   const wonRef = useRefA(false);
 
   // 스테이지 변경 시 리셋
   useEffectA(() => {
-    setCommands([]);
     setCharPos(level.start);
     setStatus('idle');
-    setStepIdx(-1);
+    setBump(false);
     wonRef.current = false;
   }, [stageIdx]);
 
-  const reset = () => {
-    setCommands([]); setCharPos(level.start); setStatus('idle'); setStepIdx(-1);
-  };
-  const softReset = () => { setCharPos(level.start); setStatus('idle'); setStepIdx(-1); };
-
-  const addCmd = (id) => {
-    if (status === 'running') return;
-    if (status === 'success' || status === 'fail') softReset();
-    setCommands((c) => [...c, id]);
-  };
-  const removeCmd = (i) => {
-    if (status === 'running') return;
-    setCommands((c) => c.filter((_, idx) => idx !== i));
-  };
-
-  const run = async () => {
-    if (status === 'running' || !commands.length) return;
-    setStatus('running');
-    setCharPos(level.start);
-    setStepIdx(-1);
-    let pos = level.start;
-    await new Promise((r) => setTimeout(r, 200));
-    // 반복 블록 처리: repN 다음 dir 1개를 N회
-    let i = 0;
-    while (i < commands.length) {
-      setStepIdx(i);
-      const c = commands[i];
-      const rep = CODING_REPEATS.find((r) => r.id === c);
-      if (rep) {
-        const nextC = commands[i + 1];
-        const dir = CODING_DIRS.find((d) => d.id === nextC);
-        if (!dir) { setStatus('fail'); return; }
-        for (let k = 0; k < rep.n; k++) {
-          const next = { x: pos.x + dir.dx, y: pos.y + dir.dy };
-          const oob = next.x < 0 || next.x >= CODING_GRID || next.y < 0 || next.y >= CODING_GRID;
-          const hit = level.obstacles.some((o) => o.x === next.x && o.y === next.y);
-          if (oob || hit) { setStatus('fail'); return; }
-          pos = next; setCharPos(pos);
-          await new Promise((r) => setTimeout(r, 440));
-          if (pos.x === level.goal.x && pos.y === level.goal.y) { stageWin(); return; }
-        }
-        i += 2;
-      } else {
-        const dir = CODING_DIRS.find((d) => d.id === c);
-        if (!dir) { setStatus('fail'); return; }
-        const next = { x: pos.x + dir.dx, y: pos.y + dir.dy };
-        const oob = next.x < 0 || next.x >= CODING_GRID || next.y < 0 || next.y >= CODING_GRID;
-        const hit = level.obstacles.some((o) => o.x === next.x && o.y === next.y);
-        if (oob || hit) { setStatus('fail'); return; }
-        pos = next; setCharPos(pos);
-        await new Promise((r) => setTimeout(r, 440));
-        if (pos.x === level.goal.x && pos.y === level.goal.y) { stageWin(); return; }
-        i += 1;
+  const move = (dirId) => {
+    if (status === 'success') return;
+    const r = resolveMove(charPos, dirId, CODING_GRID, level.obstacles);
+    if (r.blocked) {
+      playSfx('wrong');
+      setBump(true);
+      setTimeout(() => setBump(false), 300);
+      return;
+    }
+    setCharPos({ x: r.x, y: r.y });
+    if (r.x === level.goal.x && r.y === level.goal.y) {
+      setStatus('success');
+      if (!wonRef.current) {
+        wonRef.current = true;
+        onComplete && onComplete(3);
+        try {
+          const cleared = parseInt(localStorage.getItem('kw-coding-cleared') || '0');
+          if (stageIdx + 1 > cleared) localStorage.setItem('kw-coding-cleared', String(stageIdx + 1));
+        } catch {}
       }
     }
-    setStatus('fail');
   };
 
-  const stageWin = () => {
-    setStatus('success');
-    if (!wonRef.current) {
-      wonRef.current = true;
-      onComplete && onComplete(3);
-      try {
-        const cleared = parseInt(localStorage.getItem('kw-coding-cleared') || '0');
-        if (stageIdx + 1 > cleared) localStorage.setItem('kw-coding-cleared', String(stageIdx + 1));
-      } catch {}
-    }
-  };
+  const resetPos = () => { setCharPos(level.start); setStatus('idle'); };
 
   const nextStage = () => {
     if (stageIdx < CODING_LEVELS.length - 1) {
@@ -4327,18 +4274,17 @@ function CodingActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
     }
   };
 
-  // 격자 셀 크기
-  const CELL = 76, GAP = 8;
+  const CELL = 92, GAP = 10;
   const boardSize = CODING_GRID * CELL + (CODING_GRID - 1) * GAP;
   const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
-      {/* ─ 타이틀 ─ */}
+      {/* 타이틀 + 스테이지 이동 */}
       <div style={{ height: 88, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
         <div style={{ fontSize: fontSize + 14, fontWeight: 900, color: t.text, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 36 }}>🤖</span>
-          코딩 놀이
+          <span style={{ fontSize: 36 }}>🐻</span>
+          곰곰이 길찾기
           <span style={{
             fontSize: fontSize - 2, fontWeight: 900,
             background: t.accent, color: t.text,
@@ -4347,7 +4293,6 @@ function CodingActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
             marginLeft: 6,
           }}>스테이지 {stageIdx + 1}/{CODING_LEVELS.length} · {level.name}</span>
         </div>
-        {/* 스테이지 이동 */}
         <div style={{ position: 'absolute', top: 18, right: 130, display: 'flex', gap: 8 }}>
           <button onClick={prevStage} disabled={stageIdx === 0}
             style={{
@@ -4355,16 +4300,14 @@ function CodingActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
               background: '#fff', border: accentBorder,
               cursor: stageIdx === 0 ? 'default' : 'pointer',
               fontSize: 22, fontFamily: 'inherit', color: t.text,
-              opacity: stageIdx === 0 ? 0.4 : 1,
-              boxShadow: t.shadowSm,
+              opacity: stageIdx === 0 ? 0.4 : 1, boxShadow: t.shadowSm,
             }}>◀</button>
           <button onClick={nextStage}
             style={{
               width: 52, height: 52, borderRadius: 26,
               background: status === 'success' ? t.cat.code : '#fff',
               color: status === 'success' ? t.textOnColor : t.text,
-              border: accentBorder,
-              cursor: 'pointer',
+              border: accentBorder, cursor: 'pointer',
               fontSize: 22, fontFamily: 'inherit',
               boxShadow: status === 'success' ? t.shadow : t.shadowSm,
               animation: status === 'success' ? 'kw-pulse 0.9s ease-in-out infinite' : 'none',
@@ -4372,25 +4315,16 @@ function CodingActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
         </div>
       </div>
 
-      {/* ─ 메인 row: 격자 | 명령패널 ─ */}
-      <div style={{ flex: 1, display: 'flex', gap: 18, padding: '0 24px', minHeight: 0, alignItems: 'flex-start' }}>
-        {/* 격자맵 */}
+      {/* 격자맵 */}
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 24px', minHeight: 0 }}>
         <div style={{
-          flex: '0 0 auto',
-          background: '#fff',
-          borderRadius: t.cardRadius + 4,
-          padding: 14,
-          border: t.outline === 'none' ? 'none' : t.outline,
-          boxShadow: t.shadow,
-          position: 'relative',
+          flex: '0 0 auto', background: '#fff', borderRadius: t.cardRadius + 4, padding: 14,
+          border: t.outline === 'none' ? 'none' : t.outline, boxShadow: t.shadow, position: 'relative',
         }}>
           <div style={{
             display: 'grid',
             gridTemplateColumns: `repeat(${CODING_GRID}, ${CELL}px)`,
-            gridAutoRows: `${CELL}px`,
-            gap: GAP,
-            width: boardSize,
-            height: boardSize,
+            gridAutoRows: `${CELL}px`, gap: GAP, width: boardSize, height: boardSize,
           }}>
             {Array.from({ length: CODING_GRID * CODING_GRID }).map((_, i) => {
               const x = i % CODING_GRID, y = Math.floor(i / CODING_GRID);
@@ -4401,25 +4335,19 @@ function CodingActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
                 <div key={i} style={{
                   background: isObs ? '#3a3a40' : '#F7F7F7',
                   border: isObs ? 'none' : `2px dashed rgba(0,0,0,0.10)`,
-                  borderRadius: 14,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: CELL - 28, lineHeight: 1,
-                  position: 'relative',
+                  borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: CELL - 28, lineHeight: 1, position: 'relative',
                 }}>
                   {isGoal && <span style={{ fontSize: CELL - 20, filter: 'drop-shadow(0 2px 0 rgba(0,0,0,0.15))', animation: 'kw-pop 0.6s ease both' }}>⭐</span>}
                   {isObs && <span style={{ fontSize: CELL - 36 }}>🧱</span>}
                   {isStart && !isGoal && (
-                    <span style={{
-                      position: 'absolute', inset: 6, borderRadius: 10,
-                      border: `3px dashed ${color}`,
-                      opacity: 0.55,
-                    }} />
+                    <span style={{ position: 'absolute', inset: 6, borderRadius: 10, border: `3px dashed ${color}`, opacity: 0.55 }} />
                   )}
                 </div>
               );
             })}
           </div>
-          {/* 캐릭터 */}
+          {/* 곰곰이 */}
           <div style={{
             position: 'absolute',
             left: 14 + charPos.x * (CELL + GAP),
@@ -4427,171 +4355,53 @@ function CodingActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
             width: CELL, height: CELL,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: CELL - 16, lineHeight: 1,
-            transition: 'left 0.4s cubic-bezier(.34,1.4,.6,1), top 0.4s cubic-bezier(.34,1.4,.6,1)',
+            transition: 'left 0.28s cubic-bezier(.34,1.4,.6,1), top 0.28s cubic-bezier(.34,1.4,.6,1)',
             filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.18))',
             pointerEvents: 'none',
-          }}>🏠</div>
-        </div>
-
-        {/* 우측 패널 */}
-        <div style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
-          {/* 명령 순서 */}
-          <div style={{
-            flex: 1,
-            background: '#fff',
-            border: accentBorder,
-            borderRadius: t.cardRadius + 4,
-            padding: '14px 16px',
-            boxShadow: t.shadowSm,
-            display: 'flex', flexDirection: 'column', gap: 10,
-            minHeight: 0,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ fontSize: fontSize - 2, fontWeight: 900, color: t.textMuted, letterSpacing: '0.04em' }}>📝 명령 순서</div>
-              <div style={{ fontSize: fontSize - 4, color: t.textMuted, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{commands.length}개</div>
-            </div>
-            <div style={{
-              flex: 1, minHeight: 0,
-              display: 'flex', flexWrap: 'wrap', alignContent: 'flex-start',
-              gap: 8, padding: 10,
-              background: '#F7F7F7',
-              borderRadius: t.cardRadius - 4,
-              border: '2px dashed rgba(0,0,0,0.10)',
-              overflow: 'auto',
-            }}>
-              {commands.length === 0 && (
-                <div style={{ alignSelf: 'center', width: '100%', textAlign: 'center', color: t.textMuted, fontSize: fontSize - 4, fontWeight: 700 }}>
-                  아래 화살표를 눌러 명령을 만들어요
-                </div>
-              )}
-              {commands.map((c, i) => {
-                const dir = CODING_DIRS.find((d) => d.id === c);
-                const rep = CODING_REPEATS.find((r) => r.id === c);
-                const label = dir ? dir.label : rep ? rep.label : '?';
-                const isRep = !!rep;
-                const active = stepIdx === i;
-                return (
-                  <button key={i} onClick={() => removeCmd(i)} aria-label={`명령 ${i + 1} 삭제`}
-                    onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.88)' }], { duration: 130 })}
-                    style={{
-                      width: 52, height: 52,
-                      fontSize: isRep ? 22 : 30, lineHeight: 1,
-                      background: active ? t.accent : isRep ? t.cat.shape : color,
-                      color: active ? t.text : t.textOnColor,
-                      border: active ? `3px solid ${t.text}` : (t.outline === 'none' ? 'none' : t.outline),
-                      borderRadius: 14,
-                      cursor: 'pointer', fontFamily: 'inherit',
-                      padding: 0,
-                      boxShadow: active ? `0 0 0 4px ${t.accent}55, ${t.shadow}` : t.shadowSm,
-                      transition: 'background 0.15s, box-shadow 0.15s',
-                      fontWeight: 900,
-                    }}>{label}</button>
-                );
-              })}
-            </div>
-            <div style={{ fontSize: fontSize - 6, color: t.textMuted }}>탭하면 삭제돼요</div>
-          </div>
-
-          {/* 실행 / 초기화 */}
-          <div style={{ flex: '0 0 auto', display: 'flex', gap: 12 }}>
-            <button onClick={run} disabled={status === 'running' || !commands.length}
-              onPointerDown={(e) => !e.currentTarget.disabled && e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.94)' }], { duration: 140 })}
-              style={{
-                flex: 2, height: 76,
-                background: t.cat.code, color: t.textOnColor,
-                border: t.outline === 'none' ? 'none' : t.outline,
-                borderRadius: 38,
-                fontSize: fontSize + 6, fontWeight: 900,
-                cursor: (status === 'running' || !commands.length) ? 'not-allowed' : 'pointer',
-                fontFamily: 'inherit',
-                boxShadow: t.shadow,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                opacity: (status === 'running' || !commands.length) ? 0.55 : 1,
-              }}>
-              <span style={{ fontSize: 30 }}>▶</span>실행
-            </button>
-            <button onClick={reset}
-              onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.94)' }], { duration: 140 })}
-              style={{
-                flex: 1, height: 76,
-                background: '#fff', color: t.text,
-                border: accentBorder,
-                borderRadius: 38,
-                fontSize: fontSize + 4, fontWeight: 900,
-                cursor: 'pointer', fontFamily: 'inherit',
-                boxShadow: t.shadowSm,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              }}>
-              <span style={{ fontSize: 28 }}>🗑</span>초기화
-            </button>
-          </div>
+            animation: bump ? 'kw-shake 0.3s ease' : 'none',
+          }}>🐻</div>
         </div>
       </div>
 
-      {/* ─ 하단 방향 + 반복 블록 ─ */}
-      <div style={{
-        flex: '0 0 auto',
-        padding: '14px 24px 18px',
-        display: 'flex', justifyContent: 'center', gap: 14, flexWrap: 'wrap',
-      }}>
+      {/* 하단 방향 패드(즉시 이동) + 처음으로 */}
+      <div style={{ flex: '0 0 auto', padding: '14px 24px 18px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 14 }}>
         {CODING_DIRS.map((d) => (
-          <button key={d.id} onClick={() => addCmd(d.id)} aria-label={d.name}
+          <button key={d.id} onClick={() => move(d.id)} aria-label={d.name}
             onPointerDown={(e) => e.currentTarget.animate(
-              [{ transform: 'scale(1) translateY(0)' }, { transform: 'scale(0.92) translateY(2px)' }],
-              { duration: 130 })}
+              [{ transform: 'scale(1) translateY(0)' }, { transform: 'scale(0.92) translateY(2px)' }], { duration: 130 })}
             style={{
-              width: 80, height: 80,
-              background: '#fff', color: t.text,
-              border: accentBorder,
-              borderRadius: 18,
-              fontSize: 44, lineHeight: 1,
-              cursor: 'pointer', fontFamily: 'inherit',
-              boxShadow: t.shadow,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              padding: 0,
+              width: 88, height: 88, background: '#fff', color: t.text,
+              border: accentBorder, borderRadius: 20, fontSize: 48, lineHeight: 1,
+              cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadow,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
             }}>{d.label}</button>
         ))}
-        {level.allowRepeat && CODING_REPEATS.map((r) => (
-          <button key={r.id} onClick={() => addCmd(r.id)} aria-label={`반복 ${r.n}`}
-            onPointerDown={(e) => e.currentTarget.animate(
-              [{ transform: 'scale(1) translateY(0)' }, { transform: 'scale(0.92) translateY(2px)' }],
-              { duration: 130 })}
-            style={{
-              width: 80, height: 80,
-              background: t.cat.shape, color: t.textOnColor,
-              border: t.outline === 'none' ? `4px solid ${t.text}` : t.outline,
-              borderRadius: 18,
-              fontSize: 28, lineHeight: 1,
-              cursor: 'pointer', fontFamily: 'inherit',
-              boxShadow: t.shadow,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              padding: 0,
-              fontWeight: 900,
-            }}>{r.label}</button>
-        ))}
+        <button onClick={resetPos}
+          onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.94)' }], { duration: 140 })}
+          style={{
+            height: 88, padding: '0 22px', marginLeft: 8,
+            background: t.accent, color: t.text,
+            border: t.outline === 'none' ? 'none' : t.outline, borderRadius: 20,
+            fontSize: fontSize, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit',
+            boxShadow: t.shadowSm, display: 'flex', alignItems: 'center', gap: 8,
+          }}>↺ 처음으로</button>
       </div>
 
-      {/* 결과 토스트 */}
-      {(status === 'success' || status === 'fail') && (
+      {/* 성공 토스트 */}
+      {status === 'success' && (
         <div style={{
           position: 'absolute', top: '36%', left: '50%', transform: 'translate(-50%, -50%)',
-          background: status === 'success' ? t.cat.code : t.cat.shape,
-          color: t.textOnColor,
-          padding: '22px 36px', borderRadius: 32,
-          fontSize: fontSize + 10, fontWeight: 900,
-          display: 'flex', alignItems: 'center', gap: 14,
-          animation: 'kw-toast 1.6s ease both',
-          pointerEvents: 'none', zIndex: 50,
+          background: t.cat.code, color: t.textOnColor, padding: '22px 36px', borderRadius: 32,
+          fontSize: fontSize + 10, fontWeight: 900, display: 'flex', alignItems: 'center', gap: 14,
+          animation: 'kw-toast 1.6s ease both', pointerEvents: 'none', zIndex: 50,
           boxShadow: '0 12px 32px rgba(0,0,0,0.25)',
         }}>
-          <span style={{ fontSize: 56 }}>{status === 'success' ? '🎉' : '💥'}</span>
-          {status === 'success' ? '도착했어!' : '어이쿠! 다시 해볼까?'}
+          <span style={{ fontSize: 56 }}>🎉</span>도착했어!
         </div>
       )}
 
-      <VoiceGuide tone={t}
-        show={voiceShow}
-        text={status === 'success' ? '성공!' : status === 'fail' ? '다시 도전!' : '🏠를 ⭐까지 보내봐'}
+      <VoiceGuide tone={t} show={voiceShow}
+        text={status === 'success' ? '성공! 다음 스테이지로 가볼까?' : '곰곰이를 ⭐까지 데려가 줘'}
         fontSize={fontSize - 4} />
     </div>
   );
