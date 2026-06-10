@@ -1426,28 +1426,30 @@ function useFollowPattern() {
   const [step, setStep] = useStateA(0);
   const [feedback, setFeedback] = useStateA(null); // 'ok' | 'wrong' | 'done' | null
   const fbRef = useRefA(null);
+  const stepRef = useRefA(0);
   const setFb = (v) => { fbRef.current = v; setFeedback(v); };
+  const setStepSync = (v) => { stepRef.current = v; setStep(v); };
 
   const startRandom = (ids, min = 4, max = 6) => {
     const len = min + Math.floor(Math.random() * (max - min + 1));
     const p = [];
     for (let i = 0; i < len; i++) p.push(ids[Math.floor(Math.random() * ids.length)]);
-    setPattern(p); setStep(0); setFb(null);
+    setPattern(p); setStepSync(0); setFb(null);
   };
-  const setFixed = (notes) => { setPattern(notes); setStep(0); setFb(null); };
-  const replay = () => { setStep(0); setFb(null); };
+  const setFixed = (notes) => { setPattern(notes); setStepSync(0); setFb(null); };
+  const replay = () => { setStepSync(0); setFb(null); };
 
   // 반환: 'ok'|'wrong'|'done'|'idle'. 호출측이 사운드/별/연속을 결정.
   const tap = (id) => {
     if (!pattern.length || fbRef.current === 'done') return 'idle';
-    const { step: ns, result } = nextFollowState(pattern, step, id);
+    const { step: ns, result } = nextFollowState(pattern, stepRef.current, id);
     if (result === 'wrong') {
       setFb('wrong');
       setTimeout(() => { if (fbRef.current === 'wrong') setFb(null); }, 420);
     } else if (result === 'done') {
-      setStep(ns); setFb('done');
+      setStepSync(ns); setFb('done');
     } else {
-      setStep(ns); setFb('ok');
+      setStepSync(ns); setFb('ok');
       setTimeout(() => { if (fbRef.current === 'ok') setFb(null); }, 220);
     }
     return result;
