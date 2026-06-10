@@ -3807,6 +3807,17 @@ function MusicActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow 
 // ─────────────────────────────────────────────────────────────
 const MEMORY_EMOJI = ['🐶','🐱','🐰','🦊','🐻','🐼','🦁','🐯','🐸','🐵'];
 
+// 카드뒤집기 레벨 — 0:6쌍, 1:8쌍, 2:10쌍
+const MEMORY_LEVELS = [
+  { pairs: 6, cols: 4 },
+  { pairs: 8, cols: 4 },
+  { pairs: 10, cols: 5 },
+];
+export function memoryLevelConfig(level) {
+  const i = Math.max(0, Math.min(MEMORY_LEVELS.length - 1, level));
+  return MEMORY_LEVELS[i];
+}
+
 // 패턴 놀이 — ○□○□? 다음 도형 맞추기
 const PATTERN_SHAPES = ['🔴','🟡','🔵','🟢','🟣','🟠','⭐','❤️','🔺','🔷'];
 
@@ -4184,18 +4195,25 @@ function ShadowActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
 function MemoryActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow }) {
   const t = tone;
   const color = t.cat.brain;
-  const PAIRS = 6;
-  const COLS = 4;
+  const loadLevel = () => {
+    try { return Math.max(0, Math.min(MEMORY_LEVELS.length - 1, parseInt(localStorage.getItem('kw-memory-level') || '0'))); }
+    catch { return 0; }
+  };
+  const [levelIdx, setLevelIdx] = useStateA(loadLevel);
+  const cfg = memoryLevelConfig(levelIdx);
+  const PAIRS = cfg.pairs;
+  const COLS = cfg.cols;
 
   const buildDeck = () => {
     const picked = shuffle(MEMORY_EMOJI).slice(0, PAIRS);
     return shuffle([...picked, ...picked]).map((e, i) => ({ id: i, e, matched: false }));
   };
   const [cards, setCards] = useStateA(buildDeck);
-  const [flipped, setFlipped] = useStateA([]); // 현재 펼친 인덱스 (최대 2)
+  const [flipped, setFlipped] = useStateA([]);
   const [locked, setLocked] = useStateA(false);
   const [attempts, setAttempts] = useStateA(0);
-  const [missFlash, setMissFlash] = useStateA(null); // 잘못 짝지은 인덱스 쌍
+  const [missFlash, setMissFlash] = useStateA(null);
+  const [cleared, setCleared] = useStateA(false);
   const pairsFound = cards.filter((c) => c.matched).length / 2;
   const allMatched = pairsFound === PAIRS;
   const wonRef = useRefA(false);
@@ -4204,9 +4222,19 @@ function MemoryActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow
     if (allMatched && !wonRef.current) {
       wonRef.current = true;
       onComplete && onComplete(3);
-      onFinish && onFinish();
+      try {
+        const c = parseInt(localStorage.getItem('kw-memory-cleared') || '0');
+        if (levelIdx + 1 > c) localStorage.setItem('kw-memory-cleared', String(levelIdx + 1));
+      } catch {}
+      setTimeout(() => setCleared(true), 700);
     }
   }, [allMatched]);
+
+  useEffectA(() => {
+    wonRef.current = false;
+    setCards(buildDeck());
+    setFlipped([]); setLocked(false); setAttempts(0); setMissFlash(null); setCleared(false);
+  }, [levelIdx]);
 
   const onFlip = (i) => {
     if (locked) return;
@@ -4239,7 +4267,17 @@ function MemoryActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow
   const restart = () => {
     wonRef.current = false;
     setCards(buildDeck());
-    setFlipped([]); setLocked(false); setAttempts(0); setMissFlash(null);
+    setFlipped([]); setLocked(false); setAttempts(0); setMissFlash(null); setCleared(false);
+  };
+
+  const nextLevel = () => {
+    if (levelIdx < MEMORY_LEVELS.length - 1) {
+      const next = levelIdx + 1;
+      setLevelIdx(next);
+      try { localStorage.setItem('kw-memory-level', String(next)); } catch {}
+    } else {
+      onFinish && onFinish();
+    }
   };
 
   const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
@@ -4257,7 +4295,7 @@ function MemoryActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow
             padding: '4px 14px', borderRadius: 16,
             border: t.outline === 'none' ? 'none' : t.outline,
             marginLeft: 6,
-          }}>Lv.1</span>
+          }}>Lv.{levelIdx + 1}</span>
         </div>
       </div>
 
@@ -4359,7 +4397,6 @@ function MemoryActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow
                   fontSize: 88, lineHeight: 1,
                   boxShadow: c.matched ? `0 0 0 4px ${t.cat.code}33, ${t.shadowSm}` : t.shadowSm,
                   opacity: c.matched ? 0.92 : 1,
-                  position: 'relative',
                 }}>
                   <span>{c.e}</span>
                   {c.matched && (
@@ -4376,20 +4413,29 @@ function MemoryActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow
         })}
       </div>
 
-      {/* 완료 토스트 */}
-      {allMatched && (
+      {cleared && (
         <div style={{
-          position: 'absolute', top: '40%', left: '50%', transform: 'translate(-50%, -50%)',
-          background: t.cat.code, color: t.textOnColor,
-          padding: '22px 36px', borderRadius: 32,
-          fontSize: fontSize + 10, fontWeight: 900,
-          display: 'flex', alignItems: 'center', gap: 14,
-          animation: 'kw-toast 1.8s ease both',
-          pointerEvents: 'none', zIndex: 50,
-          boxShadow: '0 12px 32px rgba(0,0,0,0.25)',
+          position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, zIndex: 60,
         }}>
-          <span style={{ fontSize: 56 }}>🎉</span>
-          다 찾았어! <span style={{ fontSize: fontSize, opacity: 0.85, marginLeft: 4 }}>{attempts}번 만에!</span>
+          <div style={{ fontSize: 120, lineHeight: 1, animation: 'kw-pop 0.6s cubic-bezier(.34,1.56,.64,1) both' }}>🎉</div>
+          <div style={{ fontSize: fontSize + 24, fontWeight: 900, color: '#fff' }}>
+            {levelIdx < MEMORY_LEVELS.length - 1 ? `Lv.${levelIdx + 1} 성공!` : '모든 레벨 성공!'}
+          </div>
+          <div style={{ display: 'flex', gap: 14 }}>
+            <button onClick={restart}
+              style={{
+                background: '#fff', color: t.text, border: 'none', borderRadius: 28, padding: '16px 28px',
+                fontSize: fontSize + 2, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadow,
+              }}>🔄 다시</button>
+            <button onClick={nextLevel}
+              onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.94)' }], { duration: 140 })}
+              style={{
+                background: color, color: t.textOnColor, border: t.outline === 'none' ? 'none' : t.outline,
+                borderRadius: 28, padding: '16px 30px', fontSize: fontSize + 2, fontWeight: 900,
+                cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadow,
+              }}>{levelIdx < MEMORY_LEVELS.length - 1 ? '다음 레벨 ▶' : '끝내기 🎀'}</button>
+          </div>
         </div>
       )}
 

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { resolveMove, isSolvable, CODING_LEVELS, CODING_GRID } from '../activities.jsx'
 import { nextFollowState } from '../activities.jsx'
+import { memoryLevelConfig } from '../activities.jsx'
 
 describe('resolveMove', () => {
   const obstacles = [{ x: 2, y: 2 }]
@@ -51,5 +52,16 @@ describe('nextFollowState', () => {
   })
   it('틀리면 step 유지 + wrong', () => {
     expect(nextFollowState(pat, 1, 'C')).toEqual({ step: 1, result: 'wrong' })
+  })
+})
+
+describe('memoryLevelConfig', () => {
+  it('Lv1=6쌍 4열, Lv2=8쌍 4열, Lv3=10쌍 5열', () => {
+    expect(memoryLevelConfig(0)).toEqual({ pairs: 6, cols: 4 })
+    expect(memoryLevelConfig(1)).toEqual({ pairs: 8, cols: 4 })
+    expect(memoryLevelConfig(2)).toEqual({ pairs: 10, cols: 5 })
+  })
+  it('범위를 벗어나면 마지막 레벨로 클램프', () => {
+    expect(memoryLevelConfig(9)).toEqual({ pairs: 10, cols: 5 })
   })
 })
