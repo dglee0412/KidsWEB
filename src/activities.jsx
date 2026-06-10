@@ -3095,6 +3095,7 @@ function DrumActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
   const startNewFollow = () => follow.startRandom(PAD_IDS, 4, 6);
 
   const tap = (pad) => {
+    if (previewing.current) return;
     setPressed(pad.id);
     playDrum(pad.id);
     addTimer(setTimeout(() => setPressed((p) => (p === pad.id ? null : p)), 150));
@@ -3203,7 +3204,7 @@ function DrumActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
                   return (
                     <div key={i} style={{
                       width: 46, height: 46, borderRadius: 12,
-                      background: passed ? pad.color : '#fff',
+                      background: passed ? (pad?.color ?? '#eee') : '#fff',
                       border: isCurrent ? `3px solid ${t.text}` : `2px solid rgba(0,0,0,0.10)`,
                       display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24,
                       boxShadow: isCurrent ? `0 0 0 3px ${t.accent}` : 'none',
