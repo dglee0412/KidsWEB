@@ -3264,36 +3264,46 @@ function MusicActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow 
   const color = t.cat.music;
   const [mode, setMode] = useStateA('free');
   const [pressed, setPressed] = useStateA(null);
-  const [pattern, setPattern] = useStateA([]);
-  const [step, setStep] = useStateA(0);
   const [songId, setSongId] = useStateA(null);
-  const [feedback, setFeedback] = useStateA(null); // 'ok' | 'wrong' | 'done'
   const [playedCount, setPlayedCount] = useStateA(new Set()); // 자유연주 진행
-  const acRef = useRefA(null);
+  const follow = useFollowPattern();
   const previewing = useRefA(false);
+  const timersRef = useRefA([]);
+  const addTimer = (id) => { timersRef.current.push(id); };
+
+  // 언마운트 시 예약 타이머 정리
+  useEffectA(() => () => { timersRef.current.forEach((id) => clearTimeout(id)); }, []);
 
   // 모드 변경 시 초기화
   useEffectA(() => {
-    setPattern([]); setStep(0); setSongId(null); setFeedback(null);
+    follow.setFixed([]); setSongId(null);
   }, [mode]);
 
   // 건반음은 공유 오디오 모듈 경유 → 효과음 음량 슬라이더 적용 + 단일 AudioContext
   const playSound = (freq) => playTone(freq);
 
+  const WHITE_IDS = PIANO_WHITE.slice(0, 7).map((n) => n.id);
+
+  const startNewFollow = () => follow.startRandom(WHITE_IDS, 4, 6);
+
+  const advanceSong = () => {
+    const idx = PIANO_SONGS.findIndex((s) => s.id === songId);
+    const nextSong = PIANO_SONGS[(idx + 1) % PIANO_SONGS.length];
+    setSongId(nextSong.id); follow.setFixed(nextSong.notes);
+  };
+
   const tap = (note) => {
     if (previewing.current) return;
     setPressed(note.id);
     playSound(note.freq);
-    setTimeout(() => setPressed((p) => (p === note.id ? null : p)), 180);
+    addTimer(setTimeout(() => setPressed((p) => (p === note.id ? null : p)), 180));
 
-    // 자유연주 — 끝나지 않고 별만 보너스로 받음
     if (mode === 'free') {
       const isWhite = PIANO_WHITE.some((w) => w.id === note.id);
       if (isWhite) {
         const next = new Set(playedCount);
         if (!next.has(note.id)) {
-          next.add(note.id);
-          setPlayedCount(next);
+          next.add(note.id); setPlayedCount(next);
           if (next.size === PIANO_WHITE.length) onComplete && onComplete(3);
           else if (next.size === 4) onComplete && onComplete(1);
         }
@@ -3301,41 +3311,29 @@ function MusicActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow 
       return;
     }
 
-    // 따라치기 / 연습곡 — 정답 체크
-    if ((mode === 'follow' || mode === 'song') && pattern.length && feedback !== 'done') {
-      const expected = pattern[step];
-      if (note.id === expected) {
-        const nextStep = step + 1;
-        if (nextStep >= pattern.length) {
-          setStep(nextStep); setFeedback('done');
-          onComplete && onComplete(mode === 'song' ? 3 : 2);
-          onFinish && onFinish();
-        } else {
-          setStep(nextStep); setFeedback('ok');
-          setTimeout(() => setFeedback((f) => (f === 'ok' ? null : f)), 220);
-        }
-      } else {
+    if ((mode === 'follow' || mode === 'song') && follow.pattern.length) {
+      const result = follow.tap(note.id);
+      if (result === 'wrong') {
         playSfx('wrong');
-        setFeedback('wrong');
-        setTimeout(() => setFeedback((f) => (f === 'wrong' ? null : f)), 420);
+      } else if (result === 'done') {
+        // 완성 → 별 적립 후 연속(칭찬화면으로 나가지 않음)
+        onComplete && onComplete(mode === 'song' ? 3 : 2);
+        addTimer(setTimeout(() => {
+          if (mode === 'song') advanceSong();
+          else startNewFollow();
+        }, 900));
       }
     }
   };
 
-  const newFollow = () => {
-    const noteIds = PIANO_WHITE.slice(0, 7).map((n) => n.id);
-    const len = 4 + Math.floor(Math.random() * 3); // 4~6음
-    const p = [];
-    for (let i = 0; i < len; i++) p.push(noteIds[Math.floor(Math.random() * noteIds.length)]);
-    setPattern(p); setStep(0); setFeedback(null);
-  };
-  const selectSong = (s) => { setSongId(s.id); setPattern(s.notes); setStep(0); setFeedback(null); };
-  const replayPattern = () => { setStep(0); setFeedback(null); };
+  const newFollow = () => startNewFollow();
+  const selectSong = (s) => { setSongId(s.id); follow.setFixed(s.notes); };
+  const replayPattern = () => follow.replay();
   const preview = async () => {
-    if (previewing.current || !pattern.length) return;
-    previewing.current = true; setStep(0); setFeedback(null);
-    for (let i = 0; i < pattern.length; i++) {
-      const n = PIANO_WHITE.find((w) => w.id === pattern[i]);
+    if (previewing.current || !follow.pattern.length) return;
+    previewing.current = true; follow.replay();
+    for (let i = 0; i < follow.pattern.length; i++) {
+      const n = PIANO_WHITE.find((w) => w.id === follow.pattern[i]);
       if (n) {
         setPressed(n.id); playSound(n.freq);
         await new Promise((r) => setTimeout(r, 380));
@@ -3352,7 +3350,7 @@ function MusicActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow 
   const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
 
   // 현재 기대 노트 (가이드 글로우)
-  const expectedId = (mode === 'follow' || mode === 'song') && feedback !== 'done' ? pattern[step] : null;
+  const expectedId = (mode === 'follow' || mode === 'song') && follow.feedback !== 'done' ? follow.pattern[follow.step] : null;
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
@@ -3447,7 +3445,7 @@ function MusicActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow 
                     }}>🎲 새 패턴</button>
                 )}
               </div>
-              {pattern.length > 0 && (
+              {follow.pattern.length > 0 && (
                 <div style={{ display: 'flex', gap: 6 }}>
                   <button onClick={preview}
                     style={{
@@ -3470,15 +3468,15 @@ function MusicActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow 
             </div>
 
             {/* 패턴 칩 */}
-            {pattern.length > 0 ? (
+            {follow.pattern.length > 0 ? (
               <div style={{
                 display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap',
-                animation: feedback === 'wrong' ? 'kw-shake 0.4s ease' : 'none',
+                animation: follow.feedback === 'wrong' ? 'kw-shake 0.4s ease' : 'none',
               }}>
-                {pattern.map((nid, i) => {
+                {follow.pattern.map((nid, i) => {
                   const n = PIANO_WHITE.find((w) => w.id === nid);
-                  const passed = i < step || feedback === 'done';
-                  const isCurrent = i === step && feedback !== 'done';
+                  const passed = i < follow.step || follow.feedback === 'done';
+                  const isCurrent = i === follow.step && follow.feedback !== 'done';
                   return (
                     <div key={i} style={{
                       width: 44, height: 44, borderRadius: 12,
@@ -3492,7 +3490,7 @@ function MusicActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow 
                     }}>{n ? n.ko : '?'}</div>
                   );
                 })}
-                {feedback === 'done' && (
+                {follow.feedback === 'done' && (
                   <div style={{
                     marginLeft: 8, display: 'flex', alignItems: 'center', gap: 6,
                     fontSize: fontSize - 2, fontWeight: 900, color: t.cat.code,
@@ -3596,9 +3594,9 @@ function MusicActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow 
       <VoiceGuide tone={t}
         show={voiceShow}
         text={mode === 'free' ? '마음대로 건반을 눌러봐!'
-              : feedback === 'done' ? '와아! 완벽해!'
-              : feedback === 'wrong' ? '다시 들어볼까?'
-              : pattern.length ? `다음: ${PIANO_WHITE.find((w) => w.id === pattern[step])?.ko || ''}`
+              : follow.feedback === 'done' ? '와아! 완벽해!'
+              : follow.feedback === 'wrong' ? '다시 들어볼까?'
+              : follow.pattern.length ? `다음: ${PIANO_WHITE.find((w) => w.id === follow.pattern[follow.step])?.ko || ''}`
               : mode === 'follow' ? '새 패턴을 눌러봐' : '곡을 골라봐'}
         fontSize={fontSize - 4} />
     </div>
