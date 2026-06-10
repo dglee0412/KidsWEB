@@ -13,6 +13,13 @@ describe('resolveMove', () => {
   it('장애물이면 제자리 + blocked=true', () => {
     expect(resolveMove({ x: 1, y: 2 }, 'right', 5, obstacles)).toEqual({ x: 1, y: 2, blocked: true })
   })
+  it('위/아래 격자 밖이면 제자리 + blocked=true', () => {
+    expect(resolveMove({ x: 0, y: 0 }, 'up', 5, [])).toEqual({ x: 0, y: 0, blocked: true })
+    expect(resolveMove({ x: 4, y: 4 }, 'down', 5, [])).toEqual({ x: 4, y: 4, blocked: true })
+  })
+  it('알 수 없는 방향이면 제자리 + blocked=true', () => {
+    expect(resolveMove({ x: 2, y: 2 }, 'diagonal', 5, [])).toEqual({ x: 2, y: 2, blocked: true })
+  })
 })
 
 describe('CODING_LEVELS', () => {
