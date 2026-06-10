@@ -3074,70 +3074,168 @@ function DrumActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
   const t = tone;
   const color = t.cat.music;
   const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
+  const [mode, setMode] = useStateA('free'); // 'free' | 'follow'
   const [pressed, setPressed] = useStateA(null);
   const [playedSet, setPlayedSet] = useStateA(() => new Set());
   const wonRef = useRefA(false);
+  const follow = useFollowPattern();
+  const previewing = useRefA(false);
+  const previewAbortRef = useRefA(false);
+  const timersRef = useRefA([]);
+  const addTimer = (id) => { timersRef.current.push(id); };
+  useEffectA(() => () => { timersRef.current.forEach((id) => clearTimeout(id)); }, []);
+  useEffectA(() => () => { previewAbortRef.current = true; }, []);
+  useEffectA(() => {
+    timersRef.current.forEach((id) => clearTimeout(id));
+    timersRef.current = [];
+    follow.setFixed([]);
+  }, [mode]);
+
+  const PAD_IDS = DRUM_PADS.map((p) => p.id);
+  const startNewFollow = () => follow.startRandom(PAD_IDS, 4, 6);
 
   const tap = (pad) => {
     setPressed(pad.id);
     playDrum(pad.id);
-    setTimeout(() => setPressed((p) => (p === pad.id ? null : p)), 150);
-    // 자유연주 — 끝나지 않고 별만 보너스로 받음
-    if (!playedSet.has(pad.id)) {
-      const next = new Set(playedSet); next.add(pad.id);
-      setPlayedSet(next);
-      if (next.size === DRUM_PADS.length && !wonRef.current) {
-        wonRef.current = true;
-        onComplete && onComplete(3);
-      } else if (next.size === 2) {
-        onComplete && onComplete(1);
+    addTimer(setTimeout(() => setPressed((p) => (p === pad.id ? null : p)), 150));
+
+    if (mode === 'free') {
+      if (!playedSet.has(pad.id)) {
+        const next = new Set(playedSet); next.add(pad.id);
+        setPlayedSet(next);
+        if (next.size === DRUM_PADS.length && !wonRef.current) { wonRef.current = true; onComplete && onComplete(3); }
+        else if (next.size === 2) onComplete && onComplete(1);
+      }
+      return;
+    }
+    if (mode === 'follow' && follow.pattern.length) {
+      const result = follow.tap(pad.id);
+      if (result === 'wrong') playSfx('wrong');
+      else if (result === 'done') {
+        onComplete && onComplete(2);
+        addTimer(setTimeout(() => startNewFollow(), 900));
       }
     }
   };
 
+  const preview = async () => {
+    if (previewing.current || !follow.pattern.length) return;
+    previewing.current = true; follow.replay();
+    for (let i = 0; i < follow.pattern.length; i++) {
+      if (previewAbortRef.current) break;
+      const pad = DRUM_PADS.find((p) => p.id === follow.pattern[i]);
+      if (pad) {
+        setPressed(pad.id); playDrum(pad.id);
+        await new Promise((r) => setTimeout(r, 360));
+        setPressed(null);
+        await new Promise((r) => setTimeout(r, 80));
+      }
+    }
+    previewing.current = false;
+  };
+
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
-      <div style={{ height: 88, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
+      <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
         <div style={{ fontSize: fontSize + 14, fontWeight: 900, color: t.text, display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 36 }}>🥁</span>드럼
         </div>
       </div>
 
+      {/* 모드 탭 */}
+      <div style={{ flex: '0 0 auto', padding: '0 28px 8px', display: 'flex', gap: 10, justifyContent: 'center' }}>
+        {[{ id: 'free', name: '자유연주', emoji: '🥁' }, { id: 'follow', name: '따라치기', emoji: '🎼' }].map((m) => {
+          const active = mode === m.id;
+          return (
+            <button key={m.id} onClick={() => setMode(m.id)}
+              style={{
+                minWidth: 180, height: 54,
+                background: active ? color : '#fff', color: active ? t.textOnColor : t.text,
+                border: active ? (t.outline === 'none' ? 'none' : t.outline) : accentBorder,
+                borderRadius: 27, fontSize: fontSize - 2, fontWeight: 900,
+                cursor: 'pointer', fontFamily: 'inherit', boxShadow: active ? t.shadow : t.shadowSm,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '0 18px',
+              }}>
+              <span style={{ fontSize: 24 }}>{m.emoji}</span>{m.name}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 가이드 패널 */}
       <div style={{ flex: '0 0 auto', padding: '0 28px 8px' }}>
-        <div style={{
-          background: '#fff', border: accentBorder, borderRadius: t.cardRadius + 2,
-          padding: '14px 22px', boxShadow: t.shadowSm,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
-        }}>
-          <div style={{ fontSize: fontSize, fontWeight: 800, color: t.text, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 30 }}>🥁</span>
-            패드를 두드려봐!
+        {mode === 'free' ? (
+          <div style={{
+            background: '#fff', border: accentBorder, borderRadius: t.cardRadius + 2, padding: '14px 22px', boxShadow: t.shadowSm,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+          }}>
+            <div style={{ fontSize: fontSize, fontWeight: 800, color: t.text, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 30 }}>🥁</span>패드를 두드려봐!
+            </div>
+            <div style={{ fontSize: fontSize - 2, color: t.textMuted, fontWeight: 800 }}>소리 {playedSet.size}/{DRUM_PADS.length}</div>
           </div>
-          <div style={{ fontSize: fontSize - 2, color: t.textMuted, fontWeight: 800 }}>
-            소리 {playedSet.size}/{DRUM_PADS.length}
+        ) : (
+          <div style={{
+            background: '#fff', border: accentBorder, borderRadius: t.cardRadius + 2, padding: '12px 16px', boxShadow: t.shadowSm,
+            display: 'flex', flexDirection: 'column', gap: 10,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <button onClick={startNewFollow}
+                style={{
+                  height: 42, padding: '0 18px', borderRadius: 21, background: t.accent, color: t.text,
+                  border: t.outline === 'none' ? 'none' : t.outline, fontSize: fontSize - 2, fontWeight: 900,
+                  cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadowSm,
+                }}>🎲 새 패턴</button>
+              {follow.pattern.length > 0 && (
+                <button onClick={preview}
+                  style={{
+                    height: 38, padding: '0 14px', borderRadius: 19, background: '#fff', color: t.text,
+                    border: accentBorder, fontSize: fontSize - 4, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
+                  }}>🔊 들어보기</button>
+              )}
+            </div>
+            {follow.pattern.length > 0 ? (
+              <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap', animation: follow.feedback === 'wrong' ? 'kw-shake 0.4s ease' : 'none' }}>
+                {follow.pattern.map((pid, i) => {
+                  const pad = DRUM_PADS.find((p) => p.id === pid);
+                  const passed = i < follow.step || follow.feedback === 'done';
+                  const isCurrent = i === follow.step && follow.feedback !== 'done';
+                  return (
+                    <div key={i} style={{
+                      width: 46, height: 46, borderRadius: 12,
+                      background: passed ? pad.color : '#fff',
+                      border: isCurrent ? `3px solid ${t.text}` : `2px solid rgba(0,0,0,0.10)`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24,
+                      boxShadow: isCurrent ? `0 0 0 3px ${t.accent}` : 'none',
+                    }}>{pad ? pad.emoji : '?'}</div>
+                  );
+                })}
+                {follow.feedback === 'done' && <div style={{ marginLeft: 8, display: 'flex', alignItems: 'center', fontSize: fontSize - 2, fontWeight: 900, color: t.cat.code }}>🎉 잘했어!</div>}
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', fontSize: fontSize - 4, color: t.textMuted, fontWeight: 700 }}>🎲 새 패턴을 눌러서 시작해봐</div>
+            )}
           </div>
-        </div>
+        )}
       </div>
 
       {/* 5패드 */}
       <div style={{ flex: 1, padding: '0 32px 16px', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14, alignItems: 'stretch', minHeight: 0 }}>
         {DRUM_PADS.map((p) => {
           const active = pressed === p.id;
+          const expected = mode === 'follow' && follow.feedback !== 'done' && follow.pattern[follow.step] === p.id;
           return (
             <button key={p.id}
               onPointerDown={(e) => { e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.94)' }], { duration: 120 }); tap(p); }}
               style={{
-                background: p.color,
-                color: t.textOnColor,
-                border: t.outline === 'none' ? `4px solid ${t.text}` : t.outline,
-                borderRadius: t.cardRadius + 4,
-                cursor: 'pointer', fontFamily: 'inherit',
-                boxShadow: active ? `inset 0 0 0 6px rgba(0,0,0,0.18), ${t.shadow}` : t.shadow,
+                background: p.color, color: t.textOnColor,
+                border: expected ? `5px solid ${t.text}` : (t.outline === 'none' ? `4px solid ${t.text}` : t.outline),
+                borderRadius: t.cardRadius + 4, cursor: 'pointer', fontFamily: 'inherit',
+                boxShadow: active ? `inset 0 0 0 6px rgba(0,0,0,0.18), ${t.shadow}` : (expected ? `0 0 0 4px ${t.accent}, ${t.shadow}` : t.shadow),
                 transform: active ? 'translateY(4px) scale(0.98)' : 'translateY(0) scale(1)',
                 transition: 'transform 0.08s ease, box-shadow 0.12s ease',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                gap: 8, padding: 14,
-                userSelect: 'none', touchAction: 'manipulation',
+                gap: 8, padding: 14, userSelect: 'none', touchAction: 'manipulation',
               }}>
               <span style={{ fontSize: 90, lineHeight: 1, filter: 'drop-shadow(0 4px 0 rgba(0,0,0,0.18))' }}>{p.emoji}</span>
               <span style={{ fontSize: fontSize + 4, fontWeight: 900 }}>{p.name}</span>
@@ -3146,7 +3244,9 @@ function DrumActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
         })}
       </div>
 
-      <VoiceGuide tone={t} show={voiceShow} text="둥둥! 두드려봐" fontSize={fontSize - 4} />
+      <VoiceGuide tone={t} show={voiceShow}
+        text={mode === 'free' ? '둥둥! 두드려봐' : follow.feedback === 'done' ? '완벽해!' : follow.pattern.length ? '순서대로 두드려봐' : '새 패턴을 눌러봐'}
+        fontSize={fontSize - 4} />
     </div>
   );
 }
