@@ -4206,6 +4206,7 @@ function ShadowActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
           </div>
           <div style={{ display: 'flex', gap: 14, marginTop: 8 }}>
             <button onClick={restart}
+              onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.94)' }], { duration: 140 })}
               style={{
                 background: '#fff', color: t.text, border: accentBorder, borderRadius: 32, padding: '18px 30px',
                 fontSize: fontSize + 4, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadowSm,
