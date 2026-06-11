@@ -186,19 +186,24 @@ function VoiceGuide({ tone, text, show, fontSize = 20 }) {
   return (
     <div style={{
       position: 'absolute',
-      bottom: 16, left: '50%', transform: 'translateX(-50%)',
-      background: 'rgba(0,0,0,0.78)',
+      bottom: 12, left: '50%', transform: 'translateX(-50%)',
+      background: 'rgba(0,0,0,0.62)',
       color: '#fff',
-      padding: '10px 22px',
+      padding: '6px 16px',
       borderRadius: 999,
-      fontSize, fontWeight: 600,
-      display: 'flex', alignItems: 'center', gap: 10,
+      fontSize: fontSize - 4, fontWeight: 600,
+      display: 'flex', alignItems: 'center', gap: 8,
       zIndex: 15,
-      maxWidth: 720,
+      maxWidth: 560,
+      pointerEvents: 'none',        // ← 뒤의 컨트롤 터치 통과
+      userSelect: 'none',
+      whiteSpace: 'nowrap',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
     }}>
-      <span style={{ fontSize: fontSize + 6, lineHeight: 1 }}>🔊</span>
-      <span>{text}</span>
-      <span aria-hidden style={{ display: 'inline-flex', gap: 3, marginLeft: 4 }}>
+      <span style={{ fontSize: fontSize, lineHeight: 1 }}>🔊</span>
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{text}</span>
+      <span aria-hidden style={{ display: 'inline-flex', gap: 2, marginLeft: 2 }}>
         <span className="kw-voice-bar" style={{ animationDelay: '0s' }} />
         <span className="kw-voice-bar" style={{ animationDelay: '0.15s' }} />
         <span className="kw-voice-bar" style={{ animationDelay: '0.3s' }} />
@@ -695,17 +700,23 @@ const SUBMENUS = {
   hangul: {
     title: '뭘 배워볼까?',
     items: [
-      { id: 'consonants', name: '자음', emoji: 'ㄱㄴㄷ', sub: '14개' },
-      { id: 'vowels',     name: '모음', emoji: 'ㅏㅑㅓ', sub: '10개' },
-      { id: 'words',      name: '낱말', emoji: '🍓', sub: '20개' },
+      { id: 'consonants', name: '자음',   emoji: 'ㄱㄴㄷ', sub: '14개' },
+      { id: 'vowels',     name: '모음',   emoji: 'ㅏㅑㅓ', sub: '10개' },
+      { id: 'trace',      name: '따라쓰기', emoji: '✏️',  sub: 'Lv.2' },
+      { id: 'combine',    name: '글자 조합', emoji: '가', sub: 'Lv.2' },
+      { id: 'words',      name: '낱말',   emoji: '🍓', sub: 'Lv.3' },
     ],
   },
   math: {
     title: '숫자 놀이',
     items: [
-      { id: 'add5',    name: '덧셈',     emoji: '➕' },
-      { id: 'count5',  name: '1~5 세기',  emoji: '🍎' },
-      { id: 'count10', name: '6~10 세기', emoji: '🍇' },
+      { id: 'count5',  name: '1~5 세기',   emoji: '🍎', sub: 'Lv.1' },
+      { id: 'count10', name: '6~10 세기',  emoji: '🍇', sub: 'Lv.1' },
+      { id: 'count20', name: '11~20 세기', emoji: '🍒', sub: 'Lv.2' },
+      { id: 'compare', name: '크기 비교',  emoji: '⚖️', sub: 'Lv.2' },
+      { id: 'order',   name: '순서 맞추기', emoji: '🔢', sub: 'Lv.2' },
+      { id: 'add5',    name: '덧셈',      emoji: '➕', sub: 'Lv.3' },
+      { id: 'sub5',    name: '뺄셈',      emoji: '➖', sub: 'Lv.3' },
     ],
   },
   music: {
@@ -752,7 +763,11 @@ function SubmenuScreen({ tone, cat, fontSize, onPick, mascotOn }) {
         gridTemplateColumns: `repeat(${Math.min(submenu.items.length, 3)}, 1fr)`,
         gap: 24,
         flex: 1,
+        minHeight: 0,
         alignContent: 'start',
+        overflowY: 'auto',
+        WebkitOverflowScrolling: 'touch',
+        paddingBottom: 8,
       }}>
         {submenu.items.map((it) => (
           <button key={it.id} onClick={() => onPick(it)}
