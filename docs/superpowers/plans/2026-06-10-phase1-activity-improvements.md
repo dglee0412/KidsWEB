@@ -193,7 +193,7 @@ export function isSolvable(level, gridSize) {
   return false;
 }
 ```
-참고: `CODING_REPEATS`는 삭제한다(직접조종은 반복블록 미사용).
+참고: 이 태스크에서는 `CODING_REPEATS`를 **삭제하지 않는다**. 기존 `CodingActivity`(Task 3에서 교체 예정)가 아직 `CODING_REPEATS`를 참조하므로, 지금 지우면 중간 상태에서 빌드가 깨진다. `CODING_REPEATS`/`CODING_DIRS`는 그대로 두고, 위 블록 중 `CODING_GRID`·`CODING_LEVELS`만 교체 + `resolveMove`/`isSolvable` 추가한다. `CODING_LEVELS`에서 `allowRepeat` 필드가 사라져도 기존 `CodingActivity`는 `level.allowRepeat`가 `undefined`(falsy)가 되어 반복 버튼만 숨겨질 뿐 정상 동작한다. (`CODING_REPEATS`는 Task 3에서 제거.)
 
 - [ ] **Step 4: 테스트 통과 확인**
 
@@ -218,7 +218,9 @@ git commit -m "feat(coding): 직접조종 이동 판정 + 5스테이지 데이�
 
 - [ ] **Step 1: CodingActivity 본문 교체**
 
-`function CodingActivity(...) { ... }` 전체를 아래로 교체한다:
+먼저 Task 2에서 남겨둔 `CODING_REPEATS` 상수(`const CODING_REPEATS = [ ... ];`, 주석 `// 반복 블록: ...` 포함)를 **삭제**한다(아래 새 `CodingActivity`는 반복블록을 쓰지 않으므로 미사용 상수가 됨).
+
+그다음 `function CodingActivity(...) { ... }` 전체를 아래로 교체한다:
 ```jsx
 function CodingActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
   const t = tone;
