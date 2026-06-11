@@ -3679,7 +3679,7 @@ function MusicActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow 
                   return (
                     <div key={i} style={{
                       width: 44, height: 44, borderRadius: 12,
-                      background: passed ? n.color : '#fff',
+                      background: passed ? (n?.color ?? '#fff') : '#fff',
                       border: isCurrent ? `3px solid ${t.text}` : `2px solid rgba(0,0,0,0.10)`,
                       color: passed ? t.textOnColor : t.text,
                       fontSize: 22, fontWeight: 900,
