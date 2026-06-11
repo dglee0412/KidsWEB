@@ -4025,17 +4025,34 @@ const SHADOW_POOL = [
   '🐶','🐱','🐰','🦊','🐻','🐼','🦁','🐯','🐸','🐵',
   '🦒','🐘','🐧','🐢','🦋','🐟','🐝','🐞','🦄','🦖',
 ];
+// 그림자 레벨 — 0:보기4·6문제, 1:보기4·8문제, 2:보기6·10문제
+const SHADOW_LEVELS = [
+  { options: 4, questions: 6 },
+  { options: 4, questions: 8 },
+  { options: 6, questions: 10 },
+];
+export function shadowLevelConfig(level) {
+  const i = Math.max(0, Math.min(SHADOW_LEVELS.length - 1, level));
+  return SHADOW_LEVELS[i];
+}
 
 function ShadowActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
   const t = tone;
   const color = t.cat.brain;
   const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
-  const TOTAL_Q = 10;
+  const loadLevel = () => {
+    try { return Math.max(0, Math.min(SHADOW_LEVELS.length - 1, parseInt(localStorage.getItem('kw-shadow-level') || '0'))); }
+    catch { return 0; }
+  };
+  const [levelIdx, setLevelIdx] = useStateA(loadLevel);
+  const cfg = shadowLevelConfig(levelIdx);
+  const TOTAL_Q = cfg.questions;
+  const OPTS = cfg.options;
 
   const newRound = () => {
     const pool = shuffle(SHADOW_POOL);
     const target = pool[0];
-    const opts = shuffle([target, pool[1], pool[2], pool[3]]);
+    const opts = shuffle([target, ...pool.slice(1, OPTS)]);
     return { target, opts };
   };
 
@@ -4056,7 +4073,10 @@ function ShadowActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
         if (nextN >= TOTAL_Q) {
           setDone(true);
           onComplete && onComplete(3);
-          onFinish && onFinish();
+          try {
+            const c = parseInt(localStorage.getItem('kw-shadow-cleared') || '0');
+            if (levelIdx + 1 > c) localStorage.setItem('kw-shadow-cleared', String(levelIdx + 1));
+          } catch {}
         } else {
           setRound(newRound()); setStatus('q'); setPicked(null);
         }
@@ -4068,6 +4088,20 @@ function ShadowActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
   };
 
   const restart = () => { setProgress(0); setDone(false); setStatus('q'); setPicked(null); setRound(newRound()); };
+
+  const nextLevel = () => {
+    if (levelIdx < SHADOW_LEVELS.length - 1) {
+      const next = levelIdx + 1;
+      setLevelIdx(next);
+    } else {
+      onFinish && onFinish();
+    }
+  };
+
+  useEffectA(() => {
+    try { localStorage.setItem('kw-shadow-level', String(levelIdx)); } catch {}
+    setProgress(0); setDone(false); setStatus('q'); setPicked(null); setRound(newRound());
+  }, [levelIdx]);
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
@@ -4081,7 +4115,7 @@ function ShadowActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
             padding: '4px 14px', borderRadius: 16,
             border: t.outline === 'none' ? 'none' : t.outline,
             marginLeft: 6,
-          }}>Lv.2</span>
+          }}>Lv.{levelIdx + 1}</span>
         </div>
       </div>
 
@@ -4116,7 +4150,7 @@ function ShadowActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
           </div>
 
           {/* 4지선다 */}
-          <div style={{ flex: '0 0 auto', padding: '14px 32px 4px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+          <div style={{ flex: '0 0 auto', padding: '14px 32px 4px', display: 'grid', gridTemplateColumns: `repeat(${OPTS}, 1fr)`, gap: 14 }}>
             {round.opts.map((s, i) => {
               const isRight = status === 'right' && s === round.target;
               const isWrong = status === 'wrong' && picked === s;
@@ -4170,17 +4204,21 @@ function ShadowActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
             <span style={{ fontSize: 36 }}>⭐</span>
             {TOTAL_Q + 3}개 별 획득!
           </div>
-          <button onClick={restart}
-            onPointerDown={(e) => e.currentTarget.animate([{transform:'scale(1)'},{transform:'scale(0.94)'}],{duration:140})}
-            style={{
-              background: color, color: t.textOnColor,
-              border: t.outline === 'none' ? 'none' : t.outline,
-              borderRadius: 32, padding: '18px 36px', marginTop: 8,
-              fontSize: fontSize + 6, fontWeight: 900,
-              cursor: 'pointer', fontFamily: 'inherit',
-              boxShadow: t.shadow,
-              display: 'inline-flex', alignItems: 'center', gap: 10,
-            }}>🔄 다시 풀기</button>
+          <div style={{ display: 'flex', gap: 14, marginTop: 8 }}>
+            <button onClick={restart}
+              style={{
+                background: '#fff', color: t.text, border: accentBorder, borderRadius: 32, padding: '18px 30px',
+                fontSize: fontSize + 4, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadowSm,
+              }}>🔄 다시 풀기</button>
+            <button onClick={nextLevel}
+              onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.94)' }], { duration: 140 })}
+              style={{
+                background: color, color: t.textOnColor, border: t.outline === 'none' ? 'none' : t.outline,
+                borderRadius: 32, padding: '18px 36px', fontSize: fontSize + 6, fontWeight: 900,
+                cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadow,
+                display: 'inline-flex', alignItems: 'center', gap: 10,
+              }}>{levelIdx < SHADOW_LEVELS.length - 1 ? '다음 레벨 ▶' : '끝내기 🎀'}</button>
+          </div>
         </div>
       )}
 

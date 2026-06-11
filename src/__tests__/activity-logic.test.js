@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { resolveMove, isSolvable, CODING_LEVELS, CODING_GRID } from '../activities.jsx'
 import { nextFollowState } from '../activities.jsx'
 import { memoryLevelConfig } from '../activities.jsx'
+import { shadowLevelConfig } from '../activities.jsx'
 
 describe('resolveMove', () => {
   const obstacles = [{ x: 2, y: 2 }]
@@ -63,5 +64,16 @@ describe('memoryLevelConfig', () => {
   })
   it('범위를 벗어나면 마지막 레벨로 클램프', () => {
     expect(memoryLevelConfig(9)).toEqual({ pairs: 10, cols: 5 })
+  })
+})
+
+describe('shadowLevelConfig', () => {
+  it('레벨별 보기수/문제수', () => {
+    expect(shadowLevelConfig(0)).toEqual({ options: 4, questions: 6 })
+    expect(shadowLevelConfig(1)).toEqual({ options: 4, questions: 8 })
+    expect(shadowLevelConfig(2)).toEqual({ options: 6, questions: 10 })
+  })
+  it('범위를 벗어나면 마지막 레벨로 클램프', () => {
+    expect(shadowLevelConfig(5)).toEqual({ options: 6, questions: 10 })
   })
 })
