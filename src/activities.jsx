@@ -4283,7 +4283,7 @@ function MemoryActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow
   const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', position: 'relative' }}>
       {/* ─ 타이틀 ─ */}
       <div style={{ height: 88, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
         <div style={{ fontSize: fontSize + 14, fontWeight: 900, color: t.text, display: 'flex', alignItems: 'center', gap: 10 }}>
