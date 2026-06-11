@@ -2942,6 +2942,24 @@ function FruitGroup({ n, obj, tone }) {
 // 3) 수학 — 사물 N개 보여주고 정답 숫자 고르기
 // ─────────────────────────────────────────────────────────────
 const MATH_OBJECTS = ['🍎','🍊','🍋','🍌','🍇','🍓','🍑','🍒'];
+// 숫자세기 보기 4개(정답 포함, 모두 1..maxN, 중복 없음). 경계 타깃에서도 항상 4개 보장(±3 윈도).
+export function mathOptions(target, maxN) {
+  const lo = Math.max(1, target - 3);
+  const hi = Math.min(maxN, target + 3);
+  const pool = [];
+  for (let v = lo; v <= hi; v++) if (v !== target) pool.push(v);
+  // Fisher-Yates 셔플 후 3개 추출
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  const opts = [target, ...pool.slice(0, 3)];
+  for (let i = opts.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [opts[i], opts[j]] = [opts[j], opts[i]];
+  }
+  return opts;
+}
 function MathActivity({ tone, subId, fontSize, onComplete, voiceShow }) {
   const t = tone;
   const color = t.cat.math;
@@ -2950,11 +2968,8 @@ function MathActivity({ tone, subId, fontSize, onComplete, voiceShow }) {
   const newRound = () => {
     const target = Math.floor(Math.random() * (maxN - minN + 1)) + minN;
     const objIdx = Math.floor(Math.random() * MATH_OBJECTS.length);
-    // 보기 4개 — 정답 + 근접 오답
-    const opts = new Set([target]);
-    while (opts.size < 4) opts.add(Math.max(1, Math.min(maxN, target + (Math.floor(Math.random() * 5) - 2))));
-    const arr = Array.from(opts).sort(() => Math.random() - 0.5);
-    return { target, objIdx, opts: arr };
+    const opts = mathOptions(target, maxN);
+    return { target, objIdx, opts };
   };
   const [round, setRound] = useStateA(newRound);
   const [status, setStatus] = useStateA('q'); // q | right | wrong

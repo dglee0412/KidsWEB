@@ -3,6 +3,7 @@ import { resolveMove, isSolvable, CODING_LEVELS, CODING_GRID } from '../activiti
 import { nextFollowState } from '../activities.jsx'
 import { memoryLevelConfig } from '../activities.jsx'
 import { shadowLevelConfig } from '../activities.jsx'
+import { mathOptions } from '../activities.jsx'
 
 describe('resolveMove', () => {
   const obstacles = [{ x: 2, y: 2 }]
@@ -75,5 +76,23 @@ describe('shadowLevelConfig', () => {
   })
   it('범위를 벗어나면 마지막 레벨로 클램프', () => {
     expect(shadowLevelConfig(5)).toEqual({ options: 6, questions: 10 })
+  })
+})
+
+describe('mathOptions', () => {
+  const allDistinct = (a) => new Set(a).size === a.length
+  it('경계 타깃 포함 모든 값에서 정답 포함 고유 보기 4개를 만든다(무한루프 방지)', () => {
+    for (const maxN of [5, 10, 20]) {
+      for (let target = 1; target <= maxN; target++) {
+        const opts = mathOptions(target, maxN)
+        expect(opts).toHaveLength(4)
+        expect(allDistinct(opts)).toBe(true)
+        expect(opts).toContain(target)
+        for (const o of opts) {
+          expect(o).toBeGreaterThanOrEqual(1)
+          expect(o).toBeLessThanOrEqual(maxN)
+        }
+      }
+    }
   })
 })
