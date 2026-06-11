@@ -4623,7 +4623,7 @@ function CodingActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
   const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', position: 'relative' }}>
       {/* 타이틀 + 스테이지 이동 */}
       <div style={{ height: 88, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
         <div style={{ fontSize: fontSize + 14, fontWeight: 900, color: t.text, display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -4731,16 +4731,30 @@ function CodingActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
           }}>↺ 처음으로</button>
       </div>
 
-      {/* 성공 토스트 */}
+      {/* 성공 오버레이 — 카드뒤집기와 동일한 스타일 */}
       {status === 'success' && (
         <div style={{
-          position: 'absolute', top: '36%', left: '50%', transform: 'translate(-50%, -50%)',
-          background: t.cat.code, color: t.textOnColor, padding: '22px 36px', borderRadius: 32,
-          fontSize: fontSize + 10, fontWeight: 900, display: 'flex', alignItems: 'center', gap: 14,
-          animation: 'kw-toast 1.6s ease both', pointerEvents: 'none', zIndex: 50,
-          boxShadow: '0 12px 32px rgba(0,0,0,0.25)',
+          position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, zIndex: 60,
         }}>
-          <span style={{ fontSize: 56 }}>🎉</span>도착했어!
+          <div style={{ fontSize: 120, lineHeight: 1, animation: 'kw-pop 0.6s cubic-bezier(.34,1.56,.64,1) both' }}>🎉</div>
+          <div style={{ fontSize: fontSize + 24, fontWeight: 900, color: '#fff' }}>
+            {stageIdx < CODING_LEVELS.length - 1 ? `스테이지 ${stageIdx + 1} 성공!` : '모든 스테이지 성공!'}
+          </div>
+          <div style={{ display: 'flex', gap: 14 }}>
+            <button onClick={resetPos}
+              style={{
+                background: '#fff', color: t.text, border: 'none', borderRadius: 28, padding: '16px 28px',
+                fontSize: fontSize + 2, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadow,
+              }}>🔄 다시</button>
+            <button onClick={nextStage}
+              onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.94)' }], { duration: 140 })}
+              style={{
+                background: t.cat.code, color: t.textOnColor, border: t.outline === 'none' ? 'none' : t.outline,
+                borderRadius: 28, padding: '16px 30px', fontSize: fontSize + 2, fontWeight: 900,
+                cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadow,
+              }}>{stageIdx < CODING_LEVELS.length - 1 ? '다음 스테이지 ▶' : '끝내기 🎀'}</button>
+          </div>
         </div>
       )}
 
