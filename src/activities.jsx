@@ -1412,6 +1412,20 @@ const HANGUL_WORDS = [
   { word: '별',     emoji: '⭐' },
 ];
 
+const HANGUL_WORD_LEVELS = [
+  { targets: 1, options: 3, questions: 8 },
+  { targets: 1, options: 4, questions: 10 },
+  { targets: 1, options: 5, questions: 10 },
+  { targets: 2, options: 5, questions: 8 },
+  { targets: 3, options: 6, questions: 10 },
+];
+export function hangulWordLevelConfig(level) {
+  const i = Math.max(0, Math.min(HANGUL_WORD_LEVELS.length - 1, level));
+  const c = HANGUL_WORD_LEVELS[i];
+  const options = Math.max(c.targets + 1, Math.min(c.options, HANGUL_WORDS.length));
+  return { targets: c.targets, options, questions: c.questions };
+}
+
 // 따라치기 상태머신(순수). 기대 id와 비교 → step/result 산출.
 export function nextFollowState(pattern, step, id) {
   if (!pattern.length) return { step, result: 'idle' };
@@ -4093,11 +4107,13 @@ const SHADOW_POOL = [
   '🐶','🐱','🐰','🦊','🐻','🐼','🦁','🐯','🐸','🐵',
   '🦒','🐘','🐧','🐢','🦋','🐟','🐝','🐞','🦄','🦖',
 ];
-// 그림자 레벨 — 0:보기4·6문제, 1:보기4·8문제, 2:보기6·10문제
+// 그림자 레벨 — 5단계, 멀티타깃 지원
 const SHADOW_LEVELS = [
-  { options: 4, questions: 6 },
-  { options: 4, questions: 8 },
-  { options: 6, questions: 10 },
+  { targets: 1, options: 4, questions: 6 },
+  { targets: 1, options: 4, questions: 8 },
+  { targets: 1, options: 6, questions: 10 },
+  { targets: 2, options: 6, questions: 8 },
+  { targets: 3, options: 8, questions: 10 },
 ];
 export function shadowLevelConfig(level) {
   const i = Math.max(0, Math.min(SHADOW_LEVELS.length - 1, level));

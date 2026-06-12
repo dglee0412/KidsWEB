@@ -46,9 +46,11 @@ export const WORD_SET = [
 ];
 
 const ENGLISH_LEVELS = [
-  { options: 4, questions: 6 },
-  { options: 4, questions: 8 },
-  { options: 6, questions: 10 },
+  { targets: 1, options: 4, questions: 6 },
+  { targets: 1, options: 4, questions: 8 },
+  { targets: 1, options: 6, questions: 10 },
+  { targets: 2, options: 6, questions: 8 },
+  { targets: 3, options: 8, questions: 10 },
 ];
 export function englishLevelConfig(level) {
   const i = Math.max(0, Math.min(ENGLISH_LEVELS.length - 1, level));

@@ -1,14 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import { englishLevelConfig, phonicsOptions, wordOptions, ALPHABET, WORD_SET } from '../english.jsx'
 
-describe('englishLevelConfig', () => {
-  it('레벨별 보기수/문제수', () => {
-    expect(englishLevelConfig(0)).toEqual({ options: 4, questions: 6 })
-    expect(englishLevelConfig(1)).toEqual({ options: 4, questions: 8 })
-    expect(englishLevelConfig(2)).toEqual({ options: 6, questions: 10 })
-  })
-  it('범위 밖 클램프', () => {
-    expect(englishLevelConfig(9)).toEqual({ options: 6, questions: 10 })
+describe('englishLevelConfig(5레벨)', () => {
+  it('상위 레벨 멀티타깃', () => {
+    expect(englishLevelConfig(0)).toEqual({ targets: 1, options: 4, questions: 6 })
+    expect(englishLevelConfig(2)).toEqual({ targets: 1, options: 6, questions: 10 })
+    expect(englishLevelConfig(3)).toEqual({ targets: 2, options: 6, questions: 8 })
+    expect(englishLevelConfig(4)).toEqual({ targets: 3, options: 8, questions: 10 })
+    expect(englishLevelConfig(9)).toEqual({ targets: 3, options: 8, questions: 10 })
   })
 })
 

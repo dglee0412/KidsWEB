@@ -70,12 +70,12 @@ describe('memoryLevelConfig', () => {
 
 describe('shadowLevelConfig', () => {
   it('레벨별 보기수/문제수', () => {
-    expect(shadowLevelConfig(0)).toEqual({ options: 4, questions: 6 })
-    expect(shadowLevelConfig(1)).toEqual({ options: 4, questions: 8 })
-    expect(shadowLevelConfig(2)).toEqual({ options: 6, questions: 10 })
+    expect(shadowLevelConfig(0)).toEqual({ targets: 1, options: 4, questions: 6 })
+    expect(shadowLevelConfig(1)).toEqual({ targets: 1, options: 4, questions: 8 })
+    expect(shadowLevelConfig(2)).toEqual({ targets: 1, options: 6, questions: 10 })
   })
   it('범위를 벗어나면 마지막 레벨로 클램프', () => {
-    expect(shadowLevelConfig(5)).toEqual({ options: 6, questions: 10 })
+    expect(shadowLevelConfig(9)).toEqual({ targets: 3, options: 8, questions: 10 })
   })
 })
 
@@ -125,6 +125,27 @@ describe('multiTargetOptions', () => {
         expect(distinct(r)).toBe(true)
         for (const tk of targets) expect(r).toContain(tk)
       }
+    }
+  })
+})
+
+import { hangulWordLevelConfig } from '../activities.jsx'
+
+describe('shadowLevelConfig(5레벨)', () => {
+  it('상위 레벨 멀티타깃', () => {
+    expect(shadowLevelConfig(0)).toEqual({ targets: 1, options: 4, questions: 6 })
+    expect(shadowLevelConfig(3)).toEqual({ targets: 2, options: 6, questions: 8 })
+    expect(shadowLevelConfig(4)).toEqual({ targets: 3, options: 8, questions: 10 })
+  })
+})
+describe('hangulWordLevelConfig(5레벨, 풀 클램프)', () => {
+  it('targets/options/questions, options는 풀 크기 이하', () => {
+    const c0 = hangulWordLevelConfig(0)
+    expect(c0.targets).toBe(1)
+    expect(c0.questions).toBe(8)
+    for (let lv = 0; lv < 5; lv++) {
+      const c = hangulWordLevelConfig(lv)
+      expect(c.options).toBeGreaterThanOrEqual(c.targets + 1)
     }
   })
 })
