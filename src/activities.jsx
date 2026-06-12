@@ -4552,15 +4552,32 @@ export function isSolvable(level, gridSize) {
   }
   return false;
 }
+// 공용 레벨/스테이지 스테퍼 — 제목줄 우측 ◀ N/total ▶ (양방향 수기 이동)
+export function LevelStepper({ tone, cur, total, onPrev, onNext, top = 18, right = 130 }) {
+  const t = tone;
+  const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
+  const btn = (enabled) => ({
+    width: 52, height: 52, borderRadius: 26,
+    background: '#fff', border: accentBorder,
+    cursor: enabled ? 'pointer' : 'default',
+    fontSize: 22, fontFamily: 'inherit', color: t.text,
+    opacity: enabled ? 1 : 0.4, boxShadow: t.shadowSm,
+  });
+  return (
+    <div style={{ position: 'absolute', top, right, display: 'flex', alignItems: 'center', gap: 8 }}>
+      <button onClick={onPrev} disabled={cur === 0} style={btn(cur > 0)}>◀</button>
+      <div style={{ fontSize: 18, fontWeight: 900, color: t.text, minWidth: 44, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>
+        {cur + 1}/{total}
+      </div>
+      <button onClick={onNext} disabled={cur >= total - 1} style={btn(cur < total - 1)}>▶</button>
+    </div>
+  );
+}
 function CodingActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
   const t = tone;
   const color = t.cat.code;
 
-  const loadStage = () => {
-    try { return Math.max(0, Math.min(CODING_LEVELS.length - 1, parseInt(localStorage.getItem('kw-coding-stage') || '0'))); }
-    catch { return 0; }
-  };
-  const [stageIdx, setStageIdx] = useStateA(loadStage);
+  const [stageIdx, setStageIdx] = useStateA(0); // 항상 1스테이지부터(진행 비저장)
   const level = CODING_LEVELS[stageIdx];
 
   const [charPos, setCharPos] = useStateA(level.start);
@@ -4591,10 +4608,6 @@ function CodingActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
       if (!wonRef.current) {
         wonRef.current = true;
         onComplete && onComplete(3);
-        try {
-          const cleared = parseInt(localStorage.getItem('kw-coding-cleared') || '0');
-          if (stageIdx + 1 > cleared) localStorage.setItem('kw-coding-cleared', String(stageIdx + 1));
-        } catch {}
       }
     }
   };
@@ -4602,21 +4615,10 @@ function CodingActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
   const resetPos = () => { setCharPos(level.start); setStatus('idle'); };
 
   const nextStage = () => {
-    if (stageIdx < CODING_LEVELS.length - 1) {
-      const next = stageIdx + 1;
-      setStageIdx(next);
-      try { localStorage.setItem('kw-coding-stage', String(next)); } catch {}
-    } else {
-      onFinish && onFinish();
-    }
+    if (stageIdx < CODING_LEVELS.length - 1) setStageIdx(stageIdx + 1);
+    else onFinish && onFinish();
   };
-  const prevStage = () => {
-    if (stageIdx > 0) {
-      const next = stageIdx - 1;
-      setStageIdx(next);
-      try { localStorage.setItem('kw-coding-stage', String(next)); } catch {}
-    }
-  };
+  const prevStage = () => { if (stageIdx > 0) setStageIdx(stageIdx - 1); };
 
   const CELL = 92, GAP = 10;
   const boardSize = CODING_GRID * CELL + (CODING_GRID - 1) * GAP;
@@ -4637,26 +4639,7 @@ function CodingActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
             marginLeft: 6,
           }}>스테이지 {stageIdx + 1}/{CODING_LEVELS.length} · {level.name}</span>
         </div>
-        <div style={{ position: 'absolute', top: 18, right: 130, display: 'flex', gap: 8 }}>
-          <button onClick={prevStage} disabled={stageIdx === 0}
-            style={{
-              width: 52, height: 52, borderRadius: 26,
-              background: '#fff', border: accentBorder,
-              cursor: stageIdx === 0 ? 'default' : 'pointer',
-              fontSize: 22, fontFamily: 'inherit', color: t.text,
-              opacity: stageIdx === 0 ? 0.4 : 1, boxShadow: t.shadowSm,
-            }}>◀</button>
-          <button onClick={nextStage}
-            style={{
-              width: 52, height: 52, borderRadius: 26,
-              background: status === 'success' ? t.cat.code : '#fff',
-              color: status === 'success' ? t.textOnColor : t.text,
-              border: accentBorder, cursor: 'pointer',
-              fontSize: 22, fontFamily: 'inherit',
-              boxShadow: status === 'success' ? t.shadow : t.shadowSm,
-              animation: status === 'success' ? 'kw-pulse 0.9s ease-in-out infinite' : 'none',
-            }}>▶</button>
-        </div>
+        <LevelStepper tone={t} cur={stageIdx} total={CODING_LEVELS.length} onPrev={prevStage} onNext={nextStage} />
       </div>
 
       {/* 격자맵 */}
