@@ -162,3 +162,103 @@ function AlphabetActivity({ tone, subId, fontSize, onComplete, voiceShow }) {
     </div>
   );
 }
+
+// 파닉스 — 🔊 글자 소리 듣고 보기에서 고르기. 레벨(LevelStepper, 항상 1부터).
+function PhonicsActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
+  const t = tone;
+  const color = t.cat.english;
+  const [levelIdx, setLevelIdx] = useS(0);
+  const cfg = englishLevelConfig(levelIdx);
+  const newRound = () => {
+    const target = Math.floor(Math.random() * ALPHABET.length);
+    return { target, opts: phonicsOptions(target, cfg.options, ALPHABET.length) };
+  };
+  const [round, setRound] = useS(newRound);
+  const [status, setStatus] = useS('q'); // q|right|wrong
+  const [picked, setPicked] = useS(null);
+  const [progress, setProgress] = useS(0);
+  const [done, setDone] = useS(false);
+
+  useE(() => { setProgress(0); setDone(false); setStatus('q'); setPicked(null); setRound(newRound()); }, [levelIdx]);
+
+  const say = () => speakEn(ALPHABET[round.target].u);
+  useE(() => { const id = setTimeout(say, 350); return () => clearTimeout(id); }, [round]);
+
+  const pick = (i) => {
+    if (status !== 'q' || done) return;
+    if (i === round.target) {
+      playSfx('correct'); setStatus('right'); setPicked(i);
+      speakEn(`${ALPHABET[i].u}. ${ALPHABET[i].word}`);
+      onComplete && onComplete(1);
+      const n = progress + 1; setProgress(n);
+      setTimeout(() => {
+        if (n >= cfg.questions) { setDone(true); onComplete && onComplete(3); }
+        else { setRound(newRound()); setStatus('q'); setPicked(null); }
+      }, 950);
+    } else { playSfx('wrong'); setStatus('wrong'); setPicked(i); setTimeout(() => { setStatus('q'); setPicked(null); }, 650); }
+  };
+  const nextLevel = () => { if (levelIdx < 2) setLevelIdx(levelIdx + 1); else onFinish && onFinish(); };
+  const prevLevel = () => { if (levelIdx > 0) setLevelIdx(levelIdx - 1); };
+  const restart = () => { setProgress(0); setDone(false); setStatus('q'); setPicked(null); setRound(newRound()); };
+
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', position: 'relative' }}>
+      <TitleBar t={t} fontSize={fontSize} icon="🔊" title="파닉스"
+        levelStepper={<LevelStepper tone={t} cur={levelIdx} total={3} onPrev={prevLevel} onNext={nextLevel} />} />
+      {!done ? (
+        <React.Fragment>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 22, minHeight: 0, padding: '0 32px' }}>
+            <div style={{ fontSize: fontSize, fontWeight: 800, color: t.textMuted }}>소리를 듣고 맞는 글자를 골라봐</div>
+            <button onClick={say}
+              onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.94)' }], { duration: 140 })}
+              style={{ width: 200, height: 200, borderRadius: 100, background: color, color: t.textOnColor,
+                border: t.outline === 'none' ? 'none' : t.outline, fontSize: 96, cursor: 'pointer', fontFamily: 'inherit',
+                boxShadow: t.shadow, animation: status === 'wrong' ? 'kw-shake 0.4s ease' : 'none' }}>🔊</button>
+          </div>
+          <div style={{ flex: '0 0 auto', padding: '14px 32px 4px', display: 'grid', gridTemplateColumns: `repeat(${cfg.options}, 1fr)`, gap: 14 }}>
+            {round.opts.map((i) => {
+              const isRight = status === 'right' && i === round.target;
+              const isWrong = status === 'wrong' && picked === i;
+              return (
+                <button key={i} onClick={() => pick(i)}
+                  onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.92)' }], { duration: 130 })}
+                  style={{ height: 96, fontSize: 56, fontWeight: 900, fontFamily: 'inherit', cursor: 'pointer',
+                    background: isRight ? t.cat.code : isWrong ? t.cat.shape : '#fff',
+                    border: t.outline === 'none' ? `4px solid ${t.text}` : t.outline, borderRadius: t.cardRadius, boxShadow: t.shadow }}>
+                  {ALPHABET[i].u}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ flex: '0 0 auto', padding: '12px 32px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ flex: 1, display: 'flex', gap: 10 }}>
+              {Array.from({ length: cfg.questions }).map((_, i) => (
+                <span key={i} style={{ width: 20, height: 20, borderRadius: 10, background: i < progress ? color : '#fff',
+                  border: i < progress ? 'none' : `2px solid rgba(0,0,0,0.18)` }} />
+              ))}
+            </div>
+            <div style={{ fontSize: fontSize, fontWeight: 900, color: t.text }}>{progress}/{cfg.questions}</div>
+          </div>
+        </React.Fragment>
+      ) : (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18 }}>
+          <div style={{ fontSize: 140, animation: 'kw-pop 0.6s cubic-bezier(.34,1.56,.64,1) both' }}>🎉</div>
+          <div style={{ fontSize: fontSize + 22, fontWeight: 900, color: t.text }}>
+            {levelIdx < 2 ? `Lv.${levelIdx + 1} 성공!` : '모든 레벨 성공!'}
+          </div>
+          <div style={{ display: 'flex', gap: 14 }}>
+            <button onClick={restart} style={{ background: '#fff', color: t.text, border: accent(t), borderRadius: 28,
+              padding: '16px 28px', fontSize: fontSize + 2, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadowSm }}>🔄 다시</button>
+            <button onClick={nextLevel}
+              onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.94)' }], { duration: 140 })}
+              style={{ background: color, color: t.textOnColor, border: t.outline === 'none' ? 'none' : t.outline, borderRadius: 28,
+                padding: '16px 30px', fontSize: fontSize + 2, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadow }}>
+              {levelIdx < 2 ? '다음 레벨 ▶' : '끝내기 🎀'}
+            </button>
+          </div>
+        </div>
+      )}
+      <VoiceGuide tone={t} show={voiceShow} text={done ? '잘했어!' : '소리를 듣고 골라봐'} fontSize={fontSize - 4} />
+    </div>
+  );
+}
