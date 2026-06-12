@@ -4249,11 +4249,7 @@ function ShadowActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
 function MemoryActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow }) {
   const t = tone;
   const color = t.cat.brain;
-  const loadLevel = () => {
-    try { return Math.max(0, Math.min(MEMORY_LEVELS.length - 1, parseInt(localStorage.getItem('kw-memory-level') || '0'))); }
-    catch { return 0; }
-  };
-  const [levelIdx, setLevelIdx] = useStateA(loadLevel);
+  const [levelIdx, setLevelIdx] = useStateA(0); // 항상 1레벨부터(진행 비저장)
   const cfg = memoryLevelConfig(levelIdx);
   const PAIRS = cfg.pairs;
   const COLS = cfg.cols;
@@ -4276,10 +4272,6 @@ function MemoryActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow
     if (allMatched && !wonRef.current) {
       wonRef.current = true;
       onComplete && onComplete(3);
-      try {
-        const c = parseInt(localStorage.getItem('kw-memory-cleared') || '0');
-        if (levelIdx + 1 > c) localStorage.setItem('kw-memory-cleared', String(levelIdx + 1));
-      } catch {}
       setTimeout(() => setCleared(true), 700);
     }
   }, [allMatched]);
@@ -4325,14 +4317,10 @@ function MemoryActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow
   };
 
   const nextLevel = () => {
-    if (levelIdx < MEMORY_LEVELS.length - 1) {
-      const next = levelIdx + 1;
-      setLevelIdx(next);
-      try { localStorage.setItem('kw-memory-level', String(next)); } catch {}
-    } else {
-      onFinish && onFinish();
-    }
+    if (levelIdx < MEMORY_LEVELS.length - 1) setLevelIdx(levelIdx + 1);
+    else onFinish && onFinish();
   };
+  const prevLevel = () => { if (levelIdx > 0) setLevelIdx(levelIdx - 1); };
 
   const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
 
@@ -4351,6 +4339,7 @@ function MemoryActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow
             marginLeft: 6,
           }}>Lv.{levelIdx + 1}</span>
         </div>
+        <LevelStepper tone={t} cur={levelIdx} total={MEMORY_LEVELS.length} onPrev={prevLevel} onNext={nextLevel} />
       </div>
 
       {/* ─ 정보바 ─ */}
