@@ -295,6 +295,20 @@ function fallbackSpeak(text) {
   } catch {}
 }
 
+// 영어 음성 — speechSynthesis en-US. 음량은 voice 슬라이더(vols.voice)와 연동.
+export function speakEn(text, { rate = 0.85, pitch = 1.15 } = {}) {
+  try {
+    if (!text || !('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(String(text));
+    u.lang = 'en-US';
+    u.rate = rate; u.pitch = pitch; u.volume = vols.voice;
+    const en = (window.speechSynthesis.getVoices() || []).find((v) => /^en/i.test(v.lang));
+    if (en) u.voice = en;
+    window.speechSynthesis.speak(u);
+  } catch {}
+}
+
 // /voices/<key>.mp3 재생. 없거나 실패하면 speechSynthesis(fallbackText) 폴백.
 function playVoice(key, fallbackText) {
   unlockAudio();

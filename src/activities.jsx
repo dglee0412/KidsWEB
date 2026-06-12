@@ -5,6 +5,7 @@
 import React from 'react'
 import { VoiceGuide, PlaceholderScreen } from './shell.jsx'
 import { playSfx, playTone, playDrum, playToolVoice, startDraw, drawTick, stopDraw } from './lib/audio.js'
+import { EnglishActivity } from './english.jsx'
 
 const { useState: useStateA, useEffect: useEffectA, useRef: useRefA, useMemo: useMemoA, useCallback: useCallbackA } = React;
 
@@ -4055,11 +4056,7 @@ function ShadowActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
   const t = tone;
   const color = t.cat.brain;
   const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
-  const loadLevel = () => {
-    try { return Math.max(0, Math.min(SHADOW_LEVELS.length - 1, parseInt(localStorage.getItem('kw-shadow-level') || '0'))); }
-    catch { return 0; }
-  };
-  const [levelIdx, setLevelIdx] = useStateA(loadLevel);
+  const [levelIdx, setLevelIdx] = useStateA(0); // 항상 1레벨부터(진행 비저장)
   const cfg = shadowLevelConfig(levelIdx);
   const TOTAL_Q = cfg.questions;
   const OPTS = cfg.options;
@@ -4088,10 +4085,6 @@ function ShadowActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
         if (nextN >= TOTAL_Q) {
           setDone(true);
           onComplete && onComplete(3);
-          try {
-            const c = parseInt(localStorage.getItem('kw-shadow-cleared') || '0');
-            if (levelIdx + 1 > c) localStorage.setItem('kw-shadow-cleared', String(levelIdx + 1));
-          } catch {}
         } else {
           setRound(newRound()); setStatus('q'); setPicked(null);
         }
@@ -4112,14 +4105,14 @@ function ShadowActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
       onFinish && onFinish();
     }
   };
+  const prevLevel = () => { if (levelIdx > 0) setLevelIdx(levelIdx - 1); };
 
   useEffectA(() => {
-    try { localStorage.setItem('kw-shadow-level', String(levelIdx)); } catch {}
     setProgress(0); setDone(false); setStatus('q'); setPicked(null); setRound(newRound());
   }, [levelIdx]);
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', position: 'relative' }}>
       <div style={{ height: 88, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
         <div style={{ fontSize: fontSize + 14, fontWeight: 900, color: t.text, display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 36 }}>👤</span>
@@ -4132,6 +4125,7 @@ function ShadowActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
             marginLeft: 6,
           }}>Lv.{levelIdx + 1}</span>
         </div>
+        <LevelStepper tone={t} cur={levelIdx} total={SHADOW_LEVELS.length} onPrev={prevLevel} onNext={nextLevel} />
       </div>
 
       {!done ? (
@@ -4249,11 +4243,7 @@ function ShadowActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
 function MemoryActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow }) {
   const t = tone;
   const color = t.cat.brain;
-  const loadLevel = () => {
-    try { return Math.max(0, Math.min(MEMORY_LEVELS.length - 1, parseInt(localStorage.getItem('kw-memory-level') || '0'))); }
-    catch { return 0; }
-  };
-  const [levelIdx, setLevelIdx] = useStateA(loadLevel);
+  const [levelIdx, setLevelIdx] = useStateA(0); // 항상 1레벨부터(진행 비저장)
   const cfg = memoryLevelConfig(levelIdx);
   const PAIRS = cfg.pairs;
   const COLS = cfg.cols;
@@ -4276,10 +4266,6 @@ function MemoryActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow
     if (allMatched && !wonRef.current) {
       wonRef.current = true;
       onComplete && onComplete(3);
-      try {
-        const c = parseInt(localStorage.getItem('kw-memory-cleared') || '0');
-        if (levelIdx + 1 > c) localStorage.setItem('kw-memory-cleared', String(levelIdx + 1));
-      } catch {}
       setTimeout(() => setCleared(true), 700);
     }
   }, [allMatched]);
@@ -4325,14 +4311,10 @@ function MemoryActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow
   };
 
   const nextLevel = () => {
-    if (levelIdx < MEMORY_LEVELS.length - 1) {
-      const next = levelIdx + 1;
-      setLevelIdx(next);
-      try { localStorage.setItem('kw-memory-level', String(next)); } catch {}
-    } else {
-      onFinish && onFinish();
-    }
+    if (levelIdx < MEMORY_LEVELS.length - 1) setLevelIdx(levelIdx + 1);
+    else onFinish && onFinish();
   };
+  const prevLevel = () => { if (levelIdx > 0) setLevelIdx(levelIdx - 1); };
 
   const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
 
@@ -4351,6 +4333,7 @@ function MemoryActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow
             marginLeft: 6,
           }}>Lv.{levelIdx + 1}</span>
         </div>
+        <LevelStepper tone={t} cur={levelIdx} total={MEMORY_LEVELS.length} onPrev={prevLevel} onNext={nextLevel} />
       </div>
 
       {/* ─ 정보바 ─ */}
@@ -4552,15 +4535,32 @@ export function isSolvable(level, gridSize) {
   }
   return false;
 }
+// 공용 레벨/스테이지 스테퍼 — 제목줄 우측 ◀ N/total ▶ (양방향 수기 이동)
+export function LevelStepper({ tone, cur, total, onPrev, onNext, top = 18, right = 130 }) {
+  const t = tone;
+  const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
+  const btn = (enabled) => ({
+    width: 52, height: 52, borderRadius: 26,
+    background: '#fff', border: accentBorder,
+    cursor: enabled ? 'pointer' : 'default',
+    fontSize: 22, fontFamily: 'inherit', color: t.text,
+    opacity: enabled ? 1 : 0.4, boxShadow: t.shadowSm,
+  });
+  return (
+    <div style={{ position: 'absolute', top, right, display: 'flex', alignItems: 'center', gap: 8 }}>
+      <button onClick={onPrev} disabled={cur === 0} style={btn(cur > 0)}>◀</button>
+      <div style={{ fontSize: 18, fontWeight: 900, color: t.text, minWidth: 44, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>
+        {cur + 1}/{total}
+      </div>
+      <button onClick={onNext} disabled={cur >= total - 1} style={btn(cur < total - 1)}>▶</button>
+    </div>
+  );
+}
 function CodingActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
   const t = tone;
   const color = t.cat.code;
 
-  const loadStage = () => {
-    try { return Math.max(0, Math.min(CODING_LEVELS.length - 1, parseInt(localStorage.getItem('kw-coding-stage') || '0'))); }
-    catch { return 0; }
-  };
-  const [stageIdx, setStageIdx] = useStateA(loadStage);
+  const [stageIdx, setStageIdx] = useStateA(0); // 항상 1스테이지부터(진행 비저장)
   const level = CODING_LEVELS[stageIdx];
 
   const [charPos, setCharPos] = useStateA(level.start);
@@ -4591,10 +4591,6 @@ function CodingActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
       if (!wonRef.current) {
         wonRef.current = true;
         onComplete && onComplete(3);
-        try {
-          const cleared = parseInt(localStorage.getItem('kw-coding-cleared') || '0');
-          if (stageIdx + 1 > cleared) localStorage.setItem('kw-coding-cleared', String(stageIdx + 1));
-        } catch {}
       }
     }
   };
@@ -4602,21 +4598,10 @@ function CodingActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
   const resetPos = () => { setCharPos(level.start); setStatus('idle'); };
 
   const nextStage = () => {
-    if (stageIdx < CODING_LEVELS.length - 1) {
-      const next = stageIdx + 1;
-      setStageIdx(next);
-      try { localStorage.setItem('kw-coding-stage', String(next)); } catch {}
-    } else {
-      onFinish && onFinish();
-    }
+    if (stageIdx < CODING_LEVELS.length - 1) setStageIdx(stageIdx + 1);
+    else onFinish && onFinish();
   };
-  const prevStage = () => {
-    if (stageIdx > 0) {
-      const next = stageIdx - 1;
-      setStageIdx(next);
-      try { localStorage.setItem('kw-coding-stage', String(next)); } catch {}
-    }
-  };
+  const prevStage = () => { if (stageIdx > 0) setStageIdx(stageIdx - 1); };
 
   const CELL = 92, GAP = 10;
   const boardSize = CODING_GRID * CELL + (CODING_GRID - 1) * GAP;
@@ -4637,26 +4622,7 @@ function CodingActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
             marginLeft: 6,
           }}>스테이지 {stageIdx + 1}/{CODING_LEVELS.length} · {level.name}</span>
         </div>
-        <div style={{ position: 'absolute', top: 18, right: 130, display: 'flex', gap: 8 }}>
-          <button onClick={prevStage} disabled={stageIdx === 0}
-            style={{
-              width: 52, height: 52, borderRadius: 26,
-              background: '#fff', border: accentBorder,
-              cursor: stageIdx === 0 ? 'default' : 'pointer',
-              fontSize: 22, fontFamily: 'inherit', color: t.text,
-              opacity: stageIdx === 0 ? 0.4 : 1, boxShadow: t.shadowSm,
-            }}>◀</button>
-          <button onClick={nextStage}
-            style={{
-              width: 52, height: 52, borderRadius: 26,
-              background: status === 'success' ? t.cat.code : '#fff',
-              color: status === 'success' ? t.textOnColor : t.text,
-              border: accentBorder, cursor: 'pointer',
-              fontSize: 22, fontFamily: 'inherit',
-              boxShadow: status === 'success' ? t.shadow : t.shadowSm,
-              animation: status === 'success' ? 'kw-pulse 0.9s ease-in-out infinite' : 'none',
-            }}>▶</button>
-        </div>
+        <LevelStepper tone={t} cur={stageIdx} total={CODING_LEVELS.length} onPrev={prevStage} onNext={nextStage} />
       </div>
 
       {/* 격자맵 */}
@@ -4796,6 +4762,7 @@ function Activity({ tone, cat, sub, fontSize, onComplete, onFinish, voiceShow })
     if (sub?.id === 'shadow')  return <ShadowActivity  tone={tone} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
     return <MemoryActivity tone={tone} subId={sub?.id || 'memory'} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
   }
+  if (cat.id === 'english') return <EnglishActivity tone={tone} subId={sub?.id || 'upper'} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
   if (cat.id === 'code')   return <CodingActivity   tone={tone} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
   return <PlaceholderScreen tone={tone} cat={cat} fontSize={fontSize} />;
 }

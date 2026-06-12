@@ -735,6 +735,17 @@ const SUBMENUS = {
       { id: 'shadow',  name: '그림자',   emoji: '👤' },
     ],
   },
+  english: {
+    title: '무슨 영어 놀이?',
+    items: [
+      { id: 'upper',   name: '대문자 ABC', emoji: 'A',  sub: 'A~Z' },
+      { id: 'lower',   name: '소문자 abc', emoji: 'a',  sub: 'a~z' },
+      { id: 'trace',   name: '따라쓰기',   emoji: '✏️', sub: 'Lv.1' },
+      { id: 'phonics', name: '파닉스',     emoji: '🔊', sub: 'Lv.2' },
+      { id: 'words',   name: '단어 맞추기', emoji: '🧩', sub: 'Lv.2' },
+      { id: 'song',    name: 'ABC 노래',   emoji: '🎵', sub: '🎶' },
+    ],
+  },
 };
 
 function SubmenuScreen({ tone, cat, fontSize, onPick, mascotOn }) {
