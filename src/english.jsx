@@ -505,3 +505,14 @@ function AbcSongActivity({ tone, fontSize, onComplete, voiceShow }) {
     </div>
   );
 }
+
+// 라우터 — subId로 분기. activities.jsx 디스패처가 이걸 호출.
+export function EnglishActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow }) {
+  const p = { tone, fontSize, onComplete, onFinish, voiceShow };
+  if (subId === 'lower' || subId === 'upper') return <AlphabetActivity {...p} subId={subId} />;
+  if (subId === 'trace')   return <EnglishTraceActivity {...p} />;
+  if (subId === 'phonics') return <PhonicsActivity {...p} />;
+  if (subId === 'words')   return <EnglishWordsActivity {...p} />;
+  if (subId === 'song')    return <AbcSongActivity {...p} />;
+  return <AlphabetActivity {...p} subId="upper" />;
+}
