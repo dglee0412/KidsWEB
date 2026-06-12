@@ -437,3 +437,71 @@ function EnglishTraceActivity({ tone, fontSize, onComplete, voiceShow }) {
     </div>
   );
 }
+
+// ABC 노래 — A~Z 격자. ▶ 누르면 순서대로 하이라이트하며 speakEn. 탭하면 그 글자 발음.
+function AbcSongActivity({ tone, fontSize, onComplete, voiceShow }) {
+  const t = tone;
+  const color = t.cat.english;
+  const [playIdx, setPlayIdx] = useS(-1); // 재생 중 하이라이트 인덱스
+  const [isPlaying, setIsPlaying] = useS(false);
+  const playing = useR(false);
+  const wonRef = useR(false);
+  const timersRef = useR([]);
+  const addT = (id) => timersRef.current.push(id);
+  useE(() => () => { timersRef.current.forEach((id) => clearTimeout(id)); }, []);
+
+  const stop = () => {
+    playing.current = false; setIsPlaying(false); setPlayIdx(-1);
+    timersRef.current.forEach((id) => clearTimeout(id)); timersRef.current = [];
+  };
+  const play = () => {
+    if (playing.current) { stop(); return; }
+    playing.current = true; setIsPlaying(true);
+    ALPHABET.forEach((a, i) => {
+      addT(setTimeout(() => {
+        if (!playing.current) return;
+        setPlayIdx(i); speakEn(a.u, { rate: 0.9 });
+        if (i === ALPHABET.length - 1) {
+          addT(setTimeout(() => {
+            playing.current = false; setIsPlaying(false); setPlayIdx(-1);
+            if (!wonRef.current) { wonRef.current = true; onComplete && onComplete(3); }
+          }, 700));
+        }
+      }, i * 700));
+    });
+  };
+  const tapLetter = (a) => { if (!playing.current) speakEn(a.u); };
+
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
+      <TitleBar t={t} fontSize={fontSize} icon="🎵" title="ABC 노래" />
+      <div style={{ flex: '0 0 auto', padding: '0 32px 10px', display: 'flex', justifyContent: 'center' }}>
+        <button onClick={play}
+          onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.95)' }], { duration: 140 })}
+          style={{ height: 60, padding: '0 28px', borderRadius: 30, background: color, color: t.textOnColor,
+            border: t.outline === 'none' ? 'none' : t.outline, fontSize: fontSize + 4, fontWeight: 900, cursor: 'pointer',
+            fontFamily: 'inherit', boxShadow: t.shadow, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 28 }}>{isPlaying ? '⏸' : '▶'}</span>{isPlaying ? '멈추기' : '노래 부르기'}
+        </button>
+      </div>
+      <div style={{ flex: 1, padding: '0 28px 18px', display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
+        gridAutoRows: '1fr', gap: 12, minHeight: 0, alignContent: 'center' }}>
+        {ALPHABET.map((a, i) => {
+          const active = playIdx === i;
+          return (
+            <button key={a.u} onClick={() => tapLetter(a)}
+              style={{ borderRadius: 16, fontSize: 44, fontWeight: 900, fontFamily: 'inherit', cursor: 'pointer',
+                background: active ? color : '#fff', color: active ? t.textOnColor : t.text,
+                border: active ? (t.outline === 'none' ? 'none' : t.outline) : `3px solid rgba(0,0,0,0.10)`,
+                boxShadow: active ? `0 0 0 4px ${t.accent}, ${t.shadow}` : t.shadowSm,
+                transform: active ? 'translateY(-3px)' : 'none', transition: 'all 0.12s', minHeight: 64,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              <span>{a.u}</span><span style={{ fontSize: 22, opacity: 0.6 }}>{a.l}</span>
+            </button>
+          );
+        })}
+      </div>
+      <VoiceGuide tone={t} show={voiceShow} text="▶를 눌러 노래하거나 글자를 눌러봐" fontSize={fontSize - 4} />
+    </div>
+  );
+}
