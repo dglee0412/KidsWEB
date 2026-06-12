@@ -4055,11 +4055,7 @@ function ShadowActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
   const t = tone;
   const color = t.cat.brain;
   const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
-  const loadLevel = () => {
-    try { return Math.max(0, Math.min(SHADOW_LEVELS.length - 1, parseInt(localStorage.getItem('kw-shadow-level') || '0'))); }
-    catch { return 0; }
-  };
-  const [levelIdx, setLevelIdx] = useStateA(loadLevel);
+  const [levelIdx, setLevelIdx] = useStateA(0); // 항상 1레벨부터(진행 비저장)
   const cfg = shadowLevelConfig(levelIdx);
   const TOTAL_Q = cfg.questions;
   const OPTS = cfg.options;
@@ -4088,10 +4084,6 @@ function ShadowActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
         if (nextN >= TOTAL_Q) {
           setDone(true);
           onComplete && onComplete(3);
-          try {
-            const c = parseInt(localStorage.getItem('kw-shadow-cleared') || '0');
-            if (levelIdx + 1 > c) localStorage.setItem('kw-shadow-cleared', String(levelIdx + 1));
-          } catch {}
         } else {
           setRound(newRound()); setStatus('q'); setPicked(null);
         }
@@ -4112,14 +4104,14 @@ function ShadowActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
       onFinish && onFinish();
     }
   };
+  const prevLevel = () => { if (levelIdx > 0) setLevelIdx(levelIdx - 1); };
 
   useEffectA(() => {
-    try { localStorage.setItem('kw-shadow-level', String(levelIdx)); } catch {}
     setProgress(0); setDone(false); setStatus('q'); setPicked(null); setRound(newRound());
   }, [levelIdx]);
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', position: 'relative' }}>
       <div style={{ height: 88, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
         <div style={{ fontSize: fontSize + 14, fontWeight: 900, color: t.text, display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 36 }}>👤</span>
@@ -4132,6 +4124,7 @@ function ShadowActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
             marginLeft: 6,
           }}>Lv.{levelIdx + 1}</span>
         </div>
+        <LevelStepper tone={t} cur={levelIdx} total={SHADOW_LEVELS.length} onPrev={prevLevel} onNext={nextLevel} />
       </div>
 
       {!done ? (
