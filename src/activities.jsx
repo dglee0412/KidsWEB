@@ -3837,11 +3837,12 @@ function MusicActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow 
 // ─────────────────────────────────────────────────────────────
 const MEMORY_EMOJI = ['🐶','🐱','🐰','🦊','🐻','🐼','🦁','🐯','🐸','🐵'];
 
-// 카드뒤집기 레벨 — 0:6쌍, 1:8쌍, 2:10쌍
 const MEMORY_LEVELS = [
-  { pairs: 6, cols: 4 },
-  { pairs: 8, cols: 4 },
-  { pairs: 10, cols: 5 },
+  { group: 2, count: 6,  cols: 4 },
+  { group: 2, count: 8,  cols: 4 },
+  { group: 2, count: 10, cols: 5 },
+  { group: 3, count: 4,  cols: 4 },
+  { group: 3, count: 6,  cols: 6 },
 ];
 export function memoryLevelConfig(level) {
   const i = Math.max(0, Math.min(MEMORY_LEVELS.length - 1, level));
@@ -4311,14 +4312,17 @@ function ShadowActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
 function MemoryActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow }) {
   const t = tone;
   const color = t.cat.brain;
-  const [levelIdx, setLevelIdx] = useStateA(0); // 항상 1레벨부터(진행 비저장)
+  const [levelIdx, setLevelIdx] = useStateA(0);
   const cfg = memoryLevelConfig(levelIdx);
-  const PAIRS = cfg.pairs;
+  const GROUP = cfg.group;
+  const COUNT = cfg.count;
   const COLS = cfg.cols;
 
   const buildDeck = () => {
-    const picked = shuffle(MEMORY_EMOJI).slice(0, PAIRS);
-    return shuffle([...picked, ...picked]).map((e, i) => ({ id: i, e, matched: false }));
+    const picked = shuffle(MEMORY_EMOJI).slice(0, COUNT);
+    const all = [];
+    picked.forEach((e) => { for (let g = 0; g < GROUP; g++) all.push(e); });
+    return shuffle(all).map((e, i) => ({ id: i, e, matched: false }));
   };
   const [cards, setCards] = useStateA(buildDeck);
   const [flipped, setFlipped] = useStateA([]);
@@ -4326,48 +4330,54 @@ function MemoryActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow
   const [attempts, setAttempts] = useStateA(0);
   const [missFlash, setMissFlash] = useStateA(null);
   const [cleared, setCleared] = useStateA(false);
-  const pairsFound = cards.filter((c) => c.matched).length / 2;
-  const allMatched = pairsFound === PAIRS;
+  const [previewing, setPreviewing] = useStateA(true);
+  const groupsFound = cards.filter((c) => c.matched).length / GROUP;
+  const allMatched = COUNT > 0 && groupsFound === COUNT;
   const wonRef = useRefA(false);
+  const timersRef = useRefA([]);
+  const addTimer = (id) => timersRef.current.push(id);
+  useEffectA(() => () => { timersRef.current.forEach((id) => clearTimeout(id)); }, []);
+
+  const startPreview = () => {
+    setPreviewing(true); setLocked(true);
+    addTimer(setTimeout(() => { setPreviewing(false); setLocked(false); }, 1500));
+  };
 
   useEffectA(() => {
     if (allMatched && !wonRef.current) {
       wonRef.current = true;
       onComplete && onComplete(3);
-      setTimeout(() => setCleared(true), 700);
+      addTimer(setTimeout(() => setCleared(true), 700));
     }
   }, [allMatched]);
 
   useEffectA(() => {
     wonRef.current = false;
     setCards(buildDeck());
-    setFlipped([]); setLocked(false); setAttempts(0); setMissFlash(null); setCleared(false);
+    setFlipped([]); setAttempts(0); setMissFlash(null); setCleared(false);
+    startPreview();
   }, [levelIdx]);
 
   const onFlip = (i) => {
-    if (locked) return;
+    if (locked || previewing) return;
     if (cards[i].matched) return;
     if (flipped.includes(i)) return;
     const nf = [...flipped, i];
     setFlipped(nf);
-    if (nf.length === 2) {
+    if (nf.length === GROUP) {
       setLocked(true);
       setAttempts((a) => a + 1);
-      const [a, b] = nf;
-      if (cards[a].e === cards[b].e) {
-        // 정답
+      const allSame = nf.every((idx) => cards[idx].e === cards[nf[0]].e);
+      if (allSame) {
         playSfx('correct');
-        setTimeout(() => {
-          setCards((cs) => cs.map((c, idx) => (idx === a || idx === b) ? { ...c, matched: true } : c));
+        addTimer(setTimeout(() => {
+          setCards((cs) => cs.map((c, idx) => nf.includes(idx) ? { ...c, matched: true } : c));
           setFlipped([]); setLocked(false);
-        }, 650);
+        }, 650));
       } else {
-        // 오답 — 흔들리고 뒤집기
         playSfx('wrong');
-        setMissFlash([a, b]);
-        setTimeout(() => {
-          setFlipped([]); setLocked(false); setMissFlash(null);
-        }, 1000);
+        setMissFlash(nf);
+        addTimer(setTimeout(() => { setFlipped([]); setLocked(false); setMissFlash(null); }, 1000));
       }
     }
   };
@@ -4376,141 +4386,65 @@ function MemoryActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow
     wonRef.current = false;
     setCards(buildDeck());
     setFlipped([]); setLocked(false); setAttempts(0); setMissFlash(null); setCleared(false);
+    startPreview();
   };
-
-  const nextLevel = () => {
-    if (levelIdx < MEMORY_LEVELS.length - 1) setLevelIdx(levelIdx + 1);
-    else onFinish && onFinish();
-  };
+  const nextLevel = () => { if (levelIdx < MEMORY_LEVELS.length - 1) setLevelIdx(levelIdx + 1); else onFinish && onFinish(); };
   const prevLevel = () => { if (levelIdx > 0) setLevelIdx(levelIdx - 1); };
 
   const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', position: 'relative' }}>
-      {/* ─ 타이틀 ─ */}
       <div style={{ height: 88, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
         <div style={{ fontSize: fontSize + 14, fontWeight: 900, color: t.text, display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 36 }}>🃏</span>
           카드 뒤집기
-          <span style={{
-            fontSize: fontSize - 2, fontWeight: 900,
-            background: t.accent, color: t.text,
-            padding: '4px 14px', borderRadius: 16,
-            border: t.outline === 'none' ? 'none' : t.outline,
-            marginLeft: 6,
-          }}>Lv.{levelIdx + 1}</span>
+          <span style={{ fontSize: fontSize - 2, fontWeight: 900, background: t.accent, color: t.text,
+            padding: '4px 14px', borderRadius: 16, border: t.outline === 'none' ? 'none' : t.outline, marginLeft: 6 }}>
+            Lv.{levelIdx + 1}{GROUP === 3 ? ' · 3장' : ''}
+          </span>
         </div>
         <LevelStepper tone={t} cur={levelIdx} total={MEMORY_LEVELS.length} onPrev={prevLevel} onNext={nextLevel} />
       </div>
 
-      {/* ─ 정보바 ─ */}
-      <div style={{
-        flex: '0 0 auto',
-        padding: '0 28px 10px',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14,
-      }}>
-        <div style={{
-          background: '#fff', borderRadius: 999,
-          padding: '8px 20px',
-          border: accentBorder,
-          fontSize: fontSize, fontWeight: 900, color: t.text,
-          boxShadow: t.shadowSm,
-          display: 'flex', alignItems: 'center', gap: 8,
-          fontVariantNumeric: 'tabular-nums',
-        }}>
-          <span style={{ fontSize: 24, lineHeight: 1 }}>🎯</span>
-          시도 횟수 <span style={{ color: color }}>{attempts}</span>
+      <div style={{ flex: '0 0 auto', padding: '0 28px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14 }}>
+        <div style={{ background: '#fff', borderRadius: 999, padding: '8px 20px', border: accentBorder,
+          fontSize: fontSize, fontWeight: 900, color: t.text, boxShadow: t.shadowSm, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 24 }}>🎯</span> 시도 <span style={{ color }}>{attempts}</span>
         </div>
-        <div style={{
-          background: '#fff', borderRadius: 999,
-          padding: '8px 20px',
-          border: accentBorder,
-          fontSize: fontSize, fontWeight: 900, color: t.text,
-          boxShadow: t.shadowSm,
-          display: 'flex', alignItems: 'center', gap: 8,
-          fontVariantNumeric: 'tabular-nums',
-        }}>
-          <span style={{ fontSize: 24, lineHeight: 1 }}>💑</span>
-          짝 찾기 <span style={{ color: color }}>{pairsFound}/{PAIRS}</span>
+        <div style={{ background: '#fff', borderRadius: 999, padding: '8px 20px', border: accentBorder,
+          fontSize: fontSize, fontWeight: 900, color: t.text, boxShadow: t.shadowSm, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 24 }}>💑</span> 찾기 <span style={{ color }}>{groupsFound}/{COUNT}</span>
         </div>
         <button onClick={restart}
           onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.94)' }], { duration: 130 })}
-          style={{
-            background: t.accent, color: t.text,
-            border: t.outline === 'none' ? 'none' : t.outline,
-            borderRadius: 999,
-            padding: '8px 18px',
-            fontSize: fontSize - 2, fontWeight: 900,
-            cursor: 'pointer', fontFamily: 'inherit',
-            boxShadow: t.shadowSm,
-          }}>🔄 새 게임</button>
+          style={{ background: t.accent, color: t.text, border: t.outline === 'none' ? 'none' : t.outline,
+            borderRadius: 999, padding: '8px 18px', fontSize: fontSize - 2, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadowSm }}>🔄 새 게임</button>
       </div>
 
-      {/* ─ 카드 그리드 (4×3) ─ */}
-      <div style={{
-        flex: 1, padding: '0 28px 8px',
-        display: 'grid',
-        gridTemplateColumns: `repeat(${COLS}, 1fr)`,
-        gridTemplateRows: `repeat(${Math.ceil(cards.length / COLS)}, 1fr)`,
-        gap: 16,
-        minHeight: 0,
-      }}>
+      <div style={{ flex: 1, padding: '0 28px 8px', display: 'grid', gridTemplateColumns: `repeat(${COLS}, 1fr)`,
+        gridTemplateRows: `repeat(${Math.ceil(cards.length / COLS)}, 1fr)`, gap: 14, minHeight: 0 }}>
         {cards.map((c, i) => {
-          const open = flipped.includes(i) || c.matched;
+          const open = previewing || flipped.includes(i) || c.matched;
           const isMissing = missFlash && missFlash.includes(i);
           return (
             <div key={c.id} onClick={() => onFlip(i)}
-              style={{
-                perspective: 1000,
-                cursor: c.matched ? 'default' : 'pointer',
-                animation: isMissing ? 'kw-shake 0.5s ease' : 'none',
-              }}>
-              <div style={{
-                position: 'relative',
-                width: '100%', height: '100%',
-                transformStyle: 'preserve-3d',
-                transform: open ? 'rotateY(180deg)' : 'rotateY(0)',
-                transition: 'transform 0.55s cubic-bezier(.34,1.2,.4,1)',
-              }}>
-                {/* 뒷면 ❓ */}
-                <div style={{
-                  position: 'absolute', inset: 0,
-                  background: color,
-                  border: t.outline === 'none' ? 'none' : t.outline,
-                  borderRadius: t.cardRadius,
-                  backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 80, lineHeight: 1, color: t.textOnColor, fontWeight: 900,
-                  boxShadow: t.shadow,
-                  backgroundImage: t.id === 'C' ? 'none' : `radial-gradient(circle at 30% 30%, rgba(255,255,255,0.32), transparent 60%)`,
-                }}>
-                  <span style={{
-                    fontSize: 60, opacity: 0.9,
-                    textShadow: '0 3px 0 rgba(0,0,0,0.18)',
-                  }}>❓</span>
+              style={{ perspective: 1000, cursor: c.matched ? 'default' : 'pointer', animation: isMissing ? 'kw-shake 0.5s ease' : 'none' }}>
+              <div style={{ position: 'relative', width: '100%', height: '100%', transformStyle: 'preserve-3d',
+                transform: open ? 'rotateY(180deg)' : 'rotateY(0)', transition: 'transform 0.5s cubic-bezier(.34,1.2,.4,1)' }}>
+                <div style={{ position: 'absolute', inset: 0, background: color, border: t.outline === 'none' ? 'none' : t.outline,
+                  borderRadius: t.cardRadius, backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.textOnColor, boxShadow: t.shadow,
+                  backgroundImage: t.id === 'C' ? 'none' : `radial-gradient(circle at 30% 30%, rgba(255,255,255,0.32), transparent 60%)` }}>
+                  <span style={{ fontSize: 52, opacity: 0.9, textShadow: '0 3px 0 rgba(0,0,0,0.18)' }}>❓</span>
                 </div>
-                {/* 앞면 (정답 그림) */}
-                <div style={{
-                  position: 'absolute', inset: 0,
-                  background: '#fff',
-                  border: c.matched ? `4px solid ${t.cat.code}` : accentBorder,
-                  borderRadius: t.cardRadius,
-                  backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden',
-                  transform: 'rotateY(180deg)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 88, lineHeight: 1,
-                  boxShadow: c.matched ? `0 0 0 4px ${t.cat.code}33, ${t.shadowSm}` : t.shadowSm,
-                  opacity: c.matched ? 0.92 : 1,
-                }}>
+                <div style={{ position: 'absolute', inset: 0, background: '#fff',
+                  border: c.matched ? `4px solid ${t.cat.code}` : accentBorder, borderRadius: t.cardRadius,
+                  backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', transform: 'rotateY(180deg)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 72, lineHeight: 1,
+                  boxShadow: c.matched ? `0 0 0 4px ${t.cat.code}33, ${t.shadowSm}` : t.shadowSm, opacity: c.matched ? 0.92 : 1 }}>
                   <span>{c.e}</span>
-                  {c.matched && (
-                    <span style={{
-                      position: 'absolute', top: 8, right: 10,
-                      fontSize: 28, lineHeight: 1,
-                      animation: 'kw-pop 0.4s ease both',
-                    }}>✅</span>
-                  )}
+                  {c.matched && <span style={{ position: 'absolute', top: 8, right: 10, fontSize: 26, animation: 'kw-pop 0.4s ease both' }}>✅</span>}
                 </div>
               </div>
             </div>
@@ -4518,35 +4452,34 @@ function MemoryActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow
         })}
       </div>
 
+      {previewing && (
+        <div style={{ position: 'absolute', top: 92, left: '50%', transform: 'translateX(-50%)', zIndex: 40,
+          background: t.accent, color: t.text, padding: '6px 18px', borderRadius: 999, fontSize: fontSize, fontWeight: 900,
+          boxShadow: t.shadowSm, pointerEvents: 'none' }}>👀 잘 봐둬!</div>
+      )}
+
       {cleared && (
-        <div style={{
-          position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, zIndex: 60,
-        }}>
-          <div style={{ fontSize: 120, lineHeight: 1, animation: 'kw-pop 0.6s cubic-bezier(.34,1.56,.64,1) both' }}>🎉</div>
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center', gap: 18, zIndex: 60 }}>
+          <div style={{ fontSize: 120, animation: 'kw-pop 0.6s cubic-bezier(.34,1.56,.64,1) both' }}>🎉</div>
           <div style={{ fontSize: fontSize + 24, fontWeight: 900, color: '#fff' }}>
             {levelIdx < MEMORY_LEVELS.length - 1 ? `Lv.${levelIdx + 1} 성공!` : '모든 레벨 성공!'}
           </div>
           <div style={{ display: 'flex', gap: 14 }}>
-            <button onClick={restart}
-              style={{
-                background: '#fff', color: t.text, border: 'none', borderRadius: 28, padding: '16px 28px',
-                fontSize: fontSize + 2, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadow,
-              }}>🔄 다시</button>
+            <button onClick={restart} style={{ background: '#fff', color: t.text, border: 'none', borderRadius: 28,
+              padding: '16px 28px', fontSize: fontSize + 2, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadow }}>🔄 다시</button>
             <button onClick={nextLevel}
               onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.94)' }], { duration: 140 })}
-              style={{
-                background: color, color: t.textOnColor, border: t.outline === 'none' ? 'none' : t.outline,
-                borderRadius: 28, padding: '16px 30px', fontSize: fontSize + 2, fontWeight: 900,
-                cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadow,
-              }}>{levelIdx < MEMORY_LEVELS.length - 1 ? '다음 레벨 ▶' : '끝내기 🎀'}</button>
+              style={{ background: color, color: t.textOnColor, border: t.outline === 'none' ? 'none' : t.outline, borderRadius: 28,
+                padding: '16px 30px', fontSize: fontSize + 2, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadow }}>
+              {levelIdx < MEMORY_LEVELS.length - 1 ? '다음 레벨 ▶' : '끝내기 🎀'}
+            </button>
           </div>
         </div>
       )}
 
-      <VoiceGuide tone={t}
-        show={voiceShow}
-        text={allMatched ? '와! 다 맞췄어!' : flipped.length === 2 ? '같은 그림일까?' : '같은 짝을 찾아봐'}
+      <VoiceGuide tone={t} show={voiceShow}
+        text={previewing ? '카드를 잘 봐둬!' : allMatched ? '와! 다 맞췄어!' : GROUP === 3 ? '같은 그림 3장을 찾아봐' : '같은 짝을 찾아봐'}
         fontSize={fontSize - 4} />
     </div>
   );

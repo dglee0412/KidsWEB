@@ -57,14 +57,12 @@ describe('nextFollowState', () => {
   })
 })
 
-describe('memoryLevelConfig', () => {
-  it('Lv1=6쌍 4열, Lv2=8쌍 4열, Lv3=10쌍 5열', () => {
-    expect(memoryLevelConfig(0)).toEqual({ pairs: 6, cols: 4 })
-    expect(memoryLevelConfig(1)).toEqual({ pairs: 8, cols: 4 })
-    expect(memoryLevelConfig(2)).toEqual({ pairs: 10, cols: 5 })
-  })
-  it('범위를 벗어나면 마지막 레벨로 클램프', () => {
-    expect(memoryLevelConfig(9)).toEqual({ pairs: 10, cols: 5 })
+describe('memoryLevelConfig(5레벨)', () => {
+  it('레벨별 group/count/cols', () => {
+    expect(memoryLevelConfig(0)).toEqual({ group: 2, count: 6,  cols: 4 })
+    expect(memoryLevelConfig(3)).toEqual({ group: 3, count: 4,  cols: 4 })
+    expect(memoryLevelConfig(4)).toEqual({ group: 3, count: 6,  cols: 6 })
+    expect(memoryLevelConfig(9)).toEqual({ group: 3, count: 6,  cols: 6 })
   })
 })
 
