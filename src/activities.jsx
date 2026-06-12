@@ -4036,6 +4036,58 @@ function shuffle(arr) {
   return a;
 }
 
+// ── 멀티선택 공용(그림자·단어) ───────────────────────────────
+// 순수: 현재 found에 key 선택을 반영. result: already|correct|wrong|complete
+export function multiPickNext(foundArr, key, targetKeys) {
+  if (foundArr.includes(key)) return { found: foundArr, result: 'already' };
+  if (targetKeys.includes(key)) {
+    const found = [...foundArr, key];
+    return { found, result: found.length === targetKeys.length ? 'complete' : 'correct' };
+  }
+  return { found: foundArr, result: 'wrong' };
+}
+
+// 순수: 정답 키 전부 + distractor → 고유 보기 min(optionCount, pool)개(무한루프 없음).
+export function multiTargetOptions(targetKeys, optionCount, poolKeys) {
+  const need = Math.min(optionCount, poolKeys.length);
+  const distractors = shuffle(poolKeys.filter((k) => !targetKeys.includes(k)));
+  const picked = distractors.slice(0, Math.max(0, need - targetKeys.length));
+  return shuffle([...targetKeys, ...picked]);
+}
+
+// 멀티선택 훅 — found/wrongKey 상태 + ref 미러(빠른 연속 선택 stale 방지).
+export function useMultiPick() {
+  const [found, setFound] = useStateA([]);
+  const [wrongKey, setWrongKey] = useStateA(null);
+  const foundRef = useRefA([]);
+  const setF = (arr) => { foundRef.current = arr; setFound(arr); };
+  const reset = () => { setF([]); setWrongKey(null); };
+  const pick = (key, targetKeys) => {
+    const r = multiPickNext(foundRef.current, key, targetKeys);
+    if (r.result === 'wrong') {
+      setWrongKey(key);
+      setTimeout(() => setWrongKey((k) => (k === key ? null : k)), 650);
+    } else if (r.result !== 'already') {
+      setF(r.found);
+    }
+    return r.result;
+  };
+  return { found, wrongKey, pick, reset };
+}
+
+// 오답 ✗ / 정답 ✓ 배지 — 보기 버튼(position:relative) 우상단에 절대배치.
+export function PickMark({ kind }) {
+  const wrong = kind === 'wrong';
+  return (
+    <span aria-hidden style={{
+      position: 'absolute', top: 6, right: 8, width: 40, height: 40, borderRadius: 20,
+      background: wrong ? '#E5484D' : '#3BA55D', color: '#fff',
+      fontSize: 26, fontWeight: 900, lineHeight: '40px', textAlign: 'center',
+      boxShadow: '0 2px 6px rgba(0,0,0,0.3)', animation: 'kw-pop 0.3s ease both', pointerEvents: 'none',
+    }}>{wrong ? '✗' : '✓'}</span>
+  );
+}
+
 // 그림자 맞추기 — 실루엣 보고 원본 고르기
 const SHADOW_POOL = [
   '🐶','🐱','🐰','🦊','🐻','🐼','🦁','🐯','🐸','🐵',

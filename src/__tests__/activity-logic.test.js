@@ -96,3 +96,35 @@ describe('mathOptions', () => {
     }
   })
 })
+
+import { multiPickNext, multiTargetOptions } from '../activities.jsx'
+
+describe('multiPickNext', () => {
+  it('맞는 키 첫 선택 → correct', () => {
+    expect(multiPickNext([], 'a', ['a','b'])).toEqual({ found: ['a'], result: 'correct' })
+  })
+  it('마지막 타깃 선택 → complete', () => {
+    expect(multiPickNext(['a'], 'b', ['a','b'])).toEqual({ found: ['a','b'], result: 'complete' })
+  })
+  it('이미 고른 키 → already(변화 없음)', () => {
+    expect(multiPickNext(['a'], 'a', ['a','b'])).toEqual({ found: ['a'], result: 'already' })
+  })
+  it('틀린 키 → wrong(변화 없음)', () => {
+    expect(multiPickNext(['a'], 'z', ['a','b'])).toEqual({ found: ['a'], result: 'wrong' })
+  })
+})
+
+describe('multiTargetOptions', () => {
+  const distinct = (a) => new Set(a).size === a.length
+  const pool = ['a','b','c','d','e','f','g','h']
+  it('정답 전부 포함 + 고유 + 길이=min(optionCount,pool)', () => {
+    for (const targets of [['a'], ['a','b'], ['a','b','c']]) {
+      for (const oc of [4, 6, 8]) {
+        const r = multiTargetOptions(targets, oc, pool)
+        expect(r).toHaveLength(Math.min(oc, pool.length))
+        expect(distinct(r)).toBe(true)
+        for (const tk of targets) expect(r).toContain(tk)
+      }
+    }
+  })
+})
