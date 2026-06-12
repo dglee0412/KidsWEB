@@ -88,3 +88,77 @@ function TitleBar({ t, fontSize, icon, title, levelStepper }) {
   );
 }
 const accent = (t) => (t.outline === 'none' ? `3px solid ${t.text}` : t.outline);
+
+// 대문자/소문자 플래시카드 — HangulActivity 미러. subId: 'upper' | 'lower'
+function AlphabetActivity({ tone, subId, fontSize, onComplete, voiceShow }) {
+  const t = tone;
+  const isLower = subId === 'lower';
+  const color = t.cat.english;
+  const [idx, setIdx] = useS(0);
+  const [collected, setCollected] = useS(() => new Set());
+  const cur = ALPHABET[idx];
+  const glyph = isLower ? cur.l : cur.u;
+
+  const learn = () => {
+    speakEn(`${cur.u}. ${cur.word}`);
+    if (!collected.has(idx)) {
+      const ns = new Set(collected); ns.add(idx); setCollected(ns);
+      onComplete && onComplete(1);
+    }
+  };
+  const next = () => setIdx((i) => (i + 1) % ALPHABET.length);
+  const prev = () => setIdx((i) => (i - 1 + ALPHABET.length) % ALPHABET.length);
+  const navBtn = (onClick, label) => (
+    <button onClick={onClick}
+      onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.9)' }], { duration: 120 })}
+      style={{ width: 72, height: 72, borderRadius: 36, background: '#fff', border: accent(t), color: t.text,
+        fontSize: 32, fontFamily: 'inherit', cursor: 'pointer', boxShadow: t.shadow, flex: '0 0 auto' }}>{label}</button>
+  );
+
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
+      <TitleBar t={t} fontSize={fontSize} icon={isLower ? 'a' : 'A'} title={isLower ? '소문자 abc' : '대문자 ABC'} />
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 16, padding: '0 22px', minHeight: 0 }}>
+        {navBtn(prev, '◀')}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, minWidth: 0 }}>
+          <button onClick={learn}
+            onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.95)' }], { duration: 150 })}
+            style={{ position: 'relative', width: 300, height: 300, background: color,
+              border: t.outline === 'none' ? 'none' : t.outline, borderRadius: t.cardRadius + 12,
+              fontSize: 200, fontWeight: 900, lineHeight: 1, color: t.textOnColor, cursor: 'pointer',
+              fontFamily: 'inherit', boxShadow: t.shadow, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+            {glyph}
+            {collected.has(idx) && <span style={{ position: 'absolute', top: 14, right: 18, fontSize: 44 }}>⭐</span>}
+          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 18, background: '#fff', border: accent(t),
+            borderRadius: t.cardRadius + 8, padding: '12px 26px', boxShadow: t.shadowSm }}>
+            <span style={{ fontSize: 72, lineHeight: 1 }}>{cur.emoji}</span>
+            <div style={{ fontSize: 48, fontWeight: 900, color: t.text }}>
+              <span style={{ color }}>{isLower ? cur.l : cur.u}</span>{cur.word.slice(1)}
+            </div>
+            <button onClick={learn}
+              style={{ background: t.accent, color: t.text, border: t.outline === 'none' ? 'none' : t.outline,
+                borderRadius: 36, padding: '12px 18px', fontSize: fontSize + 2, fontWeight: 900, cursor: 'pointer',
+                fontFamily: 'inherit', boxShadow: t.shadow, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 26 }}>🔊</span>듣기
+            </button>
+          </div>
+        </div>
+        {navBtn(next, '▶')}
+      </div>
+      <div style={{ flex: '0 0 auto', padding: '6px 16px 14px', display: 'flex', gap: 5, justifyContent: 'center', flexWrap: 'wrap' }}>
+        {ALPHABET.map((a, i) => {
+          const active = i === idx; const learned = collected.has(i);
+          return (
+            <button key={i} onClick={() => setIdx(i)}
+              style={{ width: 38, height: 38, borderRadius: 10, fontSize: 18, fontWeight: 900, fontFamily: 'inherit', cursor: 'pointer',
+                background: active ? color : '#fff', color: active ? t.textOnColor : t.text,
+                border: active ? (t.outline === 'none' ? 'none' : t.outline) : `2px solid rgba(0,0,0,0.12)`,
+                boxShadow: learned ? `0 0 0 2px ${t.accent}` : 'none' }}>{isLower ? a.l : a.u}</button>
+          );
+        })}
+      </div>
+      <VoiceGuide tone={t} show={voiceShow} text={`${cur.u} is for ${cur.word}!`} fontSize={fontSize - 4} />
+    </div>
+  );
+}
