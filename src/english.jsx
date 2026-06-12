@@ -357,3 +357,83 @@ function EnglishWordsActivity({ tone, fontSize, onComplete, onFinish, voiceShow 
     </div>
   );
 }
+
+// 따라쓰기 — 큰 대문자 가이드 위에 그리기. 획 누적 길이가 임계치 넘으면 완료→다음 글자.
+function EnglishTraceActivity({ tone, fontSize, onComplete, voiceShow }) {
+  const t = tone;
+  const color = t.cat.english;
+  const [idx, setIdx] = useS(0);
+  const [doneSet, setDoneSet] = useS(() => new Set());
+  const [drawn, setDrawn] = useS(0);   // 누적 길이(px)
+  const cur = ALPHABET[idx];
+  const canvasRef = useR(null);
+  const drawing = useR(false);
+  const last = useR(null);
+  const wonRef = useR(false);
+  const THRESH = 1400; // 완료 임계 길이(px)
+
+  const reset = () => {
+    setDrawn(0); wonRef.current = false;
+    const c = canvasRef.current; if (c) { const ctx = c.getContext('2d'); ctx.clearRect(0, 0, c.width, c.height); }
+  };
+  useE(() => { reset(); }, [idx]);
+
+  const pos = (e) => {
+    const c = canvasRef.current; const r = c.getBoundingClientRect();
+    return { x: (e.clientX - r.left) * (c.width / r.width), y: (e.clientY - r.top) * (c.height / r.height) };
+  };
+  const down = (e) => { drawing.current = true; last.current = pos(e); speakEn(cur.u); };
+  const move = (e) => {
+    if (!drawing.current) return;
+    const p = pos(e); const l = last.current;
+    const c = canvasRef.current; const ctx = c.getContext('2d');
+    ctx.strokeStyle = color; ctx.lineWidth = 22; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(l.x, l.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+    const d = Math.hypot(p.x - l.x, p.y - l.y); last.current = p;
+    setDrawn((v) => {
+      const nv = v + d;
+      if (nv >= THRESH && !wonRef.current) {
+        wonRef.current = true;
+        if (!doneSet.has(idx)) { const ns = new Set(doneSet); ns.add(idx); setDoneSet(ns); onComplete && onComplete(2); }
+      }
+      return nv;
+    });
+  };
+  const up = () => { drawing.current = false; last.current = null; };
+  const next = () => setIdx((i) => (i + 1) % ALPHABET.length);
+  const prev = () => setIdx((i) => (i - 1 + ALPHABET.length) % ALPHABET.length);
+  const navBtn = (onClick, label) => (
+    <button onClick={onClick} style={{ width: 72, height: 72, borderRadius: 36, background: '#fff', border: accent(t),
+      color: t.text, fontSize: 32, fontFamily: 'inherit', cursor: 'pointer', boxShadow: t.shadow, flex: '0 0 auto' }}>{label}</button>
+  );
+  const pct = Math.min(100, Math.round((drawn / THRESH) * 100));
+
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
+      <TitleBar t={t} fontSize={fontSize} icon="✏️" title={`따라쓰기 — ${cur.u}`} />
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 16, padding: '0 22px', minHeight: 0 }}>
+        {navBtn(prev, '◀')}
+        <div style={{ flex: 1, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 0 }}>
+          <div style={{ position: 'relative', width: 460, height: 460, maxWidth: '100%', maxHeight: '100%',
+            background: '#fff', border: accent(t), borderRadius: t.cardRadius + 8, boxShadow: t.shadow, overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 360, fontWeight: 900, color: 'rgba(0,0,0,0.10)', lineHeight: 1, pointerEvents: 'none', userSelect: 'none' }}>{cur.u}</div>
+            <canvas ref={canvasRef} width={460} height={460}
+              onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerLeave={up}
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', touchAction: 'none', cursor: 'crosshair' }} />
+            {doneSet.has(idx) && <span style={{ position: 'absolute', top: 12, right: 16, fontSize: 48 }}>⭐</span>}
+          </div>
+        </div>
+        {navBtn(next, '▶')}
+      </div>
+      <div style={{ flex: '0 0 auto', padding: '8px 32px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div style={{ flex: 1, height: 16, borderRadius: 8, background: '#eee', overflow: 'hidden' }}>
+          <div style={{ width: `${pct}%`, height: '100%', background: color, transition: 'width 0.1s' }} />
+        </div>
+        <button onClick={reset} style={{ height: 48, padding: '0 18px', borderRadius: 24, background: t.accent, color: t.text,
+          border: t.outline === 'none' ? 'none' : t.outline, fontSize: fontSize, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadowSm }}>↺ 지우기</button>
+      </div>
+      <VoiceGuide tone={t} show={voiceShow} text={doneSet.has(idx) ? '잘했어!' : `${cur.u}를 따라 써봐`} fontSize={fontSize - 4} />
+    </div>
+  );
+}
