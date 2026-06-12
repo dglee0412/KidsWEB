@@ -4339,6 +4339,8 @@ function MemoryActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow
   useEffectA(() => () => { timersRef.current.forEach((id) => clearTimeout(id)); }, []);
 
   const startPreview = () => {
+    timersRef.current.forEach((id) => clearTimeout(id));
+    timersRef.current = [];
     setPreviewing(true); setLocked(true);
     addTimer(setTimeout(() => { setPreviewing(false); setLocked(false); }, 1500));
   };
