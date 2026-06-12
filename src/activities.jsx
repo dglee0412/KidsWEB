@@ -4125,186 +4125,134 @@ function ShadowActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
   const t = tone;
   const color = t.cat.brain;
   const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
-  const [levelIdx, setLevelIdx] = useStateA(0); // 항상 1레벨부터(진행 비저장)
+  const [levelIdx, setLevelIdx] = useStateA(0);
   const cfg = shadowLevelConfig(levelIdx);
   const TOTAL_Q = cfg.questions;
-  const OPTS = cfg.options;
 
   const newRound = () => {
     const pool = shuffle(SHADOW_POOL);
-    const target = pool[0];
-    const opts = shuffle([target, ...pool.slice(1, OPTS)]);
-    return { target, opts };
+    const targets = pool.slice(0, cfg.targets);
+    const opts = multiTargetOptions(targets, cfg.options, SHADOW_POOL);
+    return { targets, opts };
   };
-
   const [round, setRound] = useStateA(newRound);
-  const [status, setStatus] = useStateA('q');
-  const [picked, setPicked] = useStateA(null);
   const [progress, setProgress] = useStateA(0);
   const [done, setDone] = useStateA(false);
-
-  const onPick = (s) => {
-    if (status !== 'q' || done) return;
-    if (s === round.target) {
-      setStatus('right'); setPicked(s);
-      onComplete && onComplete(1);
-      const nextN = progress + 1;
-      setProgress(nextN);
-      setTimeout(() => {
-        if (nextN >= TOTAL_Q) {
-          setDone(true);
-          onComplete && onComplete(3);
-        } else {
-          setRound(newRound()); setStatus('q'); setPicked(null);
-        }
-      }, 950);
-    } else {
-      setStatus('wrong'); setPicked(s);
-      setTimeout(() => { setStatus('q'); setPicked(null); }, 650);
-    }
-  };
-
-  const restart = () => { setProgress(0); setDone(false); setStatus('q'); setPicked(null); setRound(newRound()); };
-
-  const nextLevel = () => {
-    if (levelIdx < SHADOW_LEVELS.length - 1) {
-      const next = levelIdx + 1;
-      setLevelIdx(next);
-    } else {
-      onFinish && onFinish();
-    }
-  };
-  const prevLevel = () => { if (levelIdx > 0) setLevelIdx(levelIdx - 1); };
+  const mp = useMultiPick();
+  const timersRef = useRefA([]);
+  const addTimer = (id) => timersRef.current.push(id);
+  useEffectA(() => () => { timersRef.current.forEach((id) => clearTimeout(id)); }, []);
 
   useEffectA(() => {
-    setProgress(0); setDone(false); setStatus('q'); setPicked(null); setRound(newRound());
+    timersRef.current.forEach((id) => clearTimeout(id));
+    timersRef.current = [];
+    setProgress(0); setDone(false); setRound(newRound()); mp.reset();
   }, [levelIdx]);
 
+  const onPick = (s) => {
+    if (done) return;
+    const r = mp.pick(s, round.targets);
+    if (r === 'wrong') playSfx('wrong');
+    else if (r === 'correct') playSfx('correct');
+    else if (r === 'complete') {
+      playSfx('correct');
+      onComplete && onComplete(1);
+      const nextN = progress + 1; setProgress(nextN);
+      addTimer(setTimeout(() => {
+        if (nextN >= TOTAL_Q) { setDone(true); onComplete && onComplete(3); }
+        else { setRound(newRound()); mp.reset(); }
+      }, 850));
+    }
+  };
+
+  const restart = () => { setProgress(0); setDone(false); setRound(newRound()); mp.reset(); };
+  const nextLevel = () => { if (levelIdx < SHADOW_LEVELS.length - 1) setLevelIdx(levelIdx + 1); else onFinish && onFinish(); };
+  const prevLevel = () => { if (levelIdx > 0) setLevelIdx(levelIdx - 1); };
+
+  const multi = cfg.targets > 1;
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', position: 'relative' }}>
       <div style={{ height: 88, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
         <div style={{ fontSize: fontSize + 14, fontWeight: 900, color: t.text, display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 36 }}>👤</span>
           그림자 맞추기
-          <span style={{
-            fontSize: fontSize - 2, fontWeight: 900,
-            background: t.accent, color: t.text,
-            padding: '4px 14px', borderRadius: 16,
-            border: t.outline === 'none' ? 'none' : t.outline,
-            marginLeft: 6,
-          }}>Lv.{levelIdx + 1}</span>
+          <span style={{ fontSize: fontSize - 2, fontWeight: 900, background: t.accent, color: t.text,
+            padding: '4px 14px', borderRadius: 16, border: t.outline === 'none' ? 'none' : t.outline, marginLeft: 6 }}>Lv.{levelIdx + 1}</span>
         </div>
         <LevelStepper tone={t} cur={levelIdx} total={SHADOW_LEVELS.length} onPrev={prevLevel} onNext={nextLevel} />
       </div>
 
       {!done ? (
         <React.Fragment>
-          {/* 실루엣 카드 */}
           <div style={{ flex: 1, padding: '0 32px', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0 }}>
-            <div style={{
-              width: '100%', maxWidth: 620, height: '100%',
-              background: color,
-              border: t.outline === 'none' ? 'none' : t.outline,
-              borderRadius: t.cardRadius + 8,
-              padding: '24px 28px',
-              boxShadow: t.shadow,
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              gap: 16,
-              transform: status === 'wrong' ? 'translateX(-6px)' : 'translateX(0)',
-              transition: 'transform 0.08s',
-              boxSizing: 'border-box',
-            }}>
-              <div style={{
-                fontSize: fontSize, fontWeight: 900, color: t.textOnColor,
-                background: 'rgba(0,0,0,0.18)', padding: '6px 16px', borderRadius: 16,
-              }}>이 그림자는 누구일까?</div>
-              <div key={round.target} style={{
-                fontSize: 200, lineHeight: 1,
-                filter: status === 'right' ? 'none' : 'brightness(0) drop-shadow(0 6px 0 rgba(0,0,0,0.18))',
-                animation: 'kw-pop 0.5s cubic-bezier(.34,1.56,.64,1) both',
-                transition: 'filter 0.4s ease',
-              }}>{round.target}</div>
+            <div style={{ width: '100%', maxWidth: 720, height: '100%', background: color, border: t.outline === 'none' ? 'none' : t.outline,
+              borderRadius: t.cardRadius + 8, padding: '20px 24px', boxShadow: t.shadow, display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center', gap: 14, boxSizing: 'border-box' }}>
+              <div style={{ fontSize: fontSize, fontWeight: 900, color: t.textOnColor, background: 'rgba(0,0,0,0.18)', padding: '6px 16px', borderRadius: 16 }}>
+                {multi ? `이 그림자 ${cfg.targets}개를 모두 찾아봐` : '이 그림자는 누구일까?'}
+              </div>
+              <div style={{ display: 'flex', gap: 24, alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
+                {round.targets.map((tg) => {
+                  const got = mp.found.includes(tg);
+                  return (
+                    <div key={tg} style={{ fontSize: multi ? 130 : 190, lineHeight: 1,
+                      filter: got ? 'none' : 'brightness(0) drop-shadow(0 6px 0 rgba(0,0,0,0.18))', transition: 'filter 0.3s ease' }}>{tg}</div>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
-          {/* 4지선다 */}
-          <div style={{ flex: '0 0 auto', padding: '14px 32px 4px', display: 'grid', gridTemplateColumns: `repeat(${OPTS}, 1fr)`, gap: 14 }}>
+          <div style={{ flex: '0 0 auto', padding: '14px 32px 4px', display: 'grid', gridTemplateColumns: `repeat(${cfg.options}, 1fr)`, gap: 14 }}>
             {round.opts.map((s, i) => {
-              const isRight = status === 'right' && s === round.target;
-              const isWrong = status === 'wrong' && picked === s;
+              const isRight = mp.found.includes(s);
+              const isWrong = mp.wrongKey === s;
               return (
-                <button key={i} onClick={() => onPick(s)}
-                  onPointerDown={(e) => e.currentTarget.animate([{transform:'scale(1)'},{transform:'scale(0.92)'}],{duration:130})}
-                  style={{
-                    height: 96, fontSize: 60,
+                <button key={i} onClick={() => onPick(s)} disabled={isRight}
+                  onPointerDown={(e) => !isRight && e.currentTarget.animate([{transform:'scale(1)'},{transform:'scale(0.92)'}],{duration:130})}
+                  style={{ position: 'relative', height: 92, fontSize: 54,
                     background: isRight ? t.cat.code : isWrong ? t.cat.shape : '#fff',
-                    border: t.outline === 'none' ? `4px solid ${t.text}` : t.outline,
-                    borderRadius: t.cardRadius,
-                    cursor: 'pointer', fontFamily: 'inherit',
-                    boxShadow: t.shadow,
-                    transition: 'background 0.2s',
-                  }}>{s}</button>
+                    border: t.outline === 'none' ? `4px solid ${t.text}` : t.outline, borderRadius: t.cardRadius,
+                    cursor: isRight ? 'default' : 'pointer', fontFamily: 'inherit', boxShadow: t.shadow,
+                    animation: isWrong ? 'kw-shake 0.4s ease' : 'none', transition: 'background 0.2s' }}>
+                  {s}
+                  {isRight && <PickMark kind="right" />}
+                  {isWrong && <PickMark kind="wrong" />}
+                </button>
               );
             })}
           </div>
 
           <div style={{ flex: '0 0 auto', padding: '12px 32px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ flex: 1, display: 'flex', gap: 10, alignItems: 'center' }}>
-              {Array.from({ length: TOTAL_Q }).map((_, i) => {
-                const filled = i < progress;
-                return (
-                  <span key={i} style={{
-                    width: 22, height: 22, borderRadius: 11,
-                    background: filled ? color : '#fff',
-                    border: filled ? (t.outline === 'none' ? 'none' : `2px solid ${t.text}`) : `2px solid rgba(0,0,0,0.18)`,
-                    boxShadow: filled ? t.shadowSm : 'none',
-                    transition: 'all 0.25s ease',
-                    display: 'inline-block',
-                  }} />
-                );
-              })}
+            <div style={{ flex: 1, display: 'flex', gap: 10 }}>
+              {Array.from({ length: TOTAL_Q }).map((_, i) => (
+                <span key={i} style={{ width: 22, height: 22, borderRadius: 11, background: i < progress ? color : '#fff',
+                  border: i < progress ? (t.outline === 'none' ? 'none' : `2px solid ${t.text}`) : `2px solid rgba(0,0,0,0.18)` }} />
+              ))}
             </div>
-            <div style={{ fontSize: fontSize, fontWeight: 900, color: t.text, fontVariantNumeric: 'tabular-nums', minWidth: 70, textAlign: 'right' }}>
-              {progress}/{TOTAL_Q}
-            </div>
+            <div style={{ fontSize: fontSize, fontWeight: 900, color: t.text, minWidth: 70, textAlign: 'right' }}>{progress}/{TOTAL_Q}</div>
           </div>
         </React.Fragment>
       ) : (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, padding: '0 32px 24px' }}>
-          <div style={{ fontSize: 160, lineHeight: 1, animation: 'kw-pop 0.6s cubic-bezier(.34,1.56,.64,1) both' }}>🎉</div>
+          <div style={{ fontSize: 160, animation: 'kw-pop 0.6s cubic-bezier(.34,1.56,.64,1) both' }}>🎉</div>
           <div style={{ fontSize: fontSize + 28, fontWeight: 900, color: t.text }}>그림자 다 맞췄어!</div>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            background: '#fff', border: accentBorder, borderRadius: 999,
-            padding: '10px 22px', boxShadow: t.shadowSm,
-            fontSize: fontSize + 4, fontWeight: 900, color: t.text,
-          }}>
-            <span style={{ fontSize: 36 }}>⭐</span>
-            {TOTAL_Q + 3}개 별 획득!
-          </div>
           <div style={{ display: 'flex', gap: 14, marginTop: 8 }}>
             <button onClick={restart}
               onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.94)' }], { duration: 140 })}
-              style={{
-                background: '#fff', color: t.text, border: accentBorder, borderRadius: 32, padding: '18px 30px',
-                fontSize: fontSize + 4, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadowSm,
-              }}>🔄 다시 풀기</button>
+              style={{ background: '#fff', color: t.text, border: accentBorder, borderRadius: 32, padding: '18px 30px',
+                fontSize: fontSize + 4, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadowSm }}>🔄 다시 풀기</button>
             <button onClick={nextLevel}
               onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.94)' }], { duration: 140 })}
-              style={{
-                background: color, color: t.textOnColor, border: t.outline === 'none' ? 'none' : t.outline,
-                borderRadius: 32, padding: '18px 36px', fontSize: fontSize + 6, fontWeight: 900,
-                cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadow,
-                display: 'inline-flex', alignItems: 'center', gap: 10,
-              }}>{levelIdx < SHADOW_LEVELS.length - 1 ? '다음 레벨 ▶' : '끝내기 🎀'}</button>
+              style={{ background: color, color: t.textOnColor, border: t.outline === 'none' ? 'none' : t.outline, borderRadius: 32,
+                padding: '18px 36px', fontSize: fontSize + 6, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadow,
+                display: 'inline-flex', alignItems: 'center', gap: 10 }}>{levelIdx < SHADOW_LEVELS.length - 1 ? '다음 레벨 ▶' : '끝내기 🎀'}</button>
           </div>
         </div>
       )}
 
-      <VoiceGuide tone={t}
-        show={voiceShow}
-        text={done ? '잘했어!' : status === 'right' ? '맞아!' : '이 그림자는 누구일까?'}
-        fontSize={fontSize - 4} />
+      <VoiceGuide tone={t} show={voiceShow}
+        text={done ? '잘했어!' : multi ? `그림자 ${cfg.targets}개를 모두 찾아봐` : '이 그림자는 누구일까?'} fontSize={fontSize - 4} />
     </div>
   );
 }
