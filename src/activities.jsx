@@ -804,6 +804,7 @@ function FreeColoringActivity({ tone, subId, fontSize, onComplete, onFinish, voi
   const [actions, setActions] = useStateA([]);
   const [redoStack, setRedoStack] = useStateA([]);
   const [armedSticker, setArmedSticker] = useStateA(null);
+  const [drag, setDrag] = useStateA(null); // 드래그 중 스티커: { id, x, y } (확정 전 임시 위치)
   const [showStickerPalette, setShowStickerPalette] = useStateA(false);
   const [hue, setHue] = useStateA(0);
   const [saved, setSaved] = useStateA(false);
@@ -821,6 +822,7 @@ function FreeColoringActivity({ tone, subId, fontSize, onComplete, onFinish, voi
     setActions([]);
     setRedoStack([]);
     setArmedSticker(null);
+    setDrag(null);
     setDoneOnce(false);
   }, [currentId]);
 
@@ -881,7 +883,6 @@ function FreeColoringActivity({ tone, subId, fontSize, onComplete, onFinish, voi
       const sticker = { id: Date.now() + Math.random(), emoji: armedSticker, x: p.x, y: p.y, size: 64 };
       setActions((a) => [...a, { type: 'sticker', sticker }]);
       setRedoStack([]);
-      setArmedSticker(null);
       playSfx('sticker');
       if (!doneOnce) { onComplete && onComplete(1); setDoneOnce(true); }
       return;
@@ -946,7 +947,7 @@ function FreeColoringActivity({ tone, subId, fontSize, onComplete, onFinish, voi
     setActions([...actions, first]);
     setRedoStack(rest);
   };
-  const reset = () => { setActions([]); setRedoStack([]); setArmedSticker(null); };
+  const reset = () => { setActions([]); setRedoStack([]); setArmedSticker(null); setDrag(null); };
 
   const onSave = async () => {
     if (!actions.length) { setSaved(true); setTimeout(() => setSaved(false), 1400); return; }
@@ -1069,6 +1070,20 @@ function FreeColoringActivity({ tone, subId, fontSize, onComplete, onFinish, voi
         overflowX: 'auto', overflowY: 'hidden',
         alignItems: 'center',
       }}>
+          <button key="blank" onClick={() => setCurrentId('blank')}
+            onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.94)' }], { duration: 130 })}
+            style={{
+              flex: '0 0 auto', width: 130, height: 60,
+              background: currentId === 'blank' ? colorCat : '#fff',
+              color: currentId === 'blank' ? t.textOnColor : t.text,
+              border: currentId === 'blank' ? (t.outline === 'none' ? 'none' : t.outline) : accentBorder,
+              borderRadius: t.cardRadius, cursor: 'pointer', fontFamily: 'inherit',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              boxShadow: currentId === 'blank' ? t.shadow : t.shadowSm, padding: '0 10px',
+            }}>
+            <span style={{ fontSize: 26, lineHeight: 1 }}>📄</span>
+            <span style={{ fontSize: fontSize - 6, fontWeight: 900, whiteSpace: 'nowrap' }}>빈 종이</span>
+          </button>
         {visibleIds.map((id) => {
           const x = COLORING_TEMPLATES[id];
           const active = id === currentId;
@@ -1117,31 +1132,65 @@ function FreeColoringActivity({ tone, subId, fontSize, onComplete, onFinish, voi
               touchAction: 'none',
               cursor: armedSticker ? 'cell' : 'crosshair',
             }} />
-          {/* 도안 윤곽선 레이어 (캔버스 위, 항상 보임, 포인터 이벤트 차단 안 함) */}
-          <svg viewBox={tpl.viewBox} preserveAspectRatio="xMidYMid meet"
-            style={{
-              position: 'absolute', inset: 0, width: '100%', height: '100%',
-              pointerEvents: 'none',
-            }}>
-            {tpl.parts.map((p) => (
-              <path key={p.id} d={p.d}
-                fill="none"
-                stroke={t.text} strokeWidth="3.5"
-                strokeLinejoin="round" strokeLinecap="round"
-              />
-            ))}
-          </svg>
-          {/* 스티커 레이어 (DOM, 화면 표시용) */}
-          {stickerActions.map((a) => (
-            <div key={a.sticker.id} style={{
-              position: 'absolute',
-              left: a.sticker.x, top: a.sticker.y,
-              transform: 'translate(-50%, -50%)',
-              fontSize: a.sticker.size, lineHeight: 1,
-              pointerEvents: 'none', userSelect: 'none',
-              filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.18))',
-            }}>{a.sticker.emoji}</div>
-          ))}
+          {/* 도안 윤곽선 레이어 — 빈 종이(tpl 없음)면 렌더 안 함 */}
+          {tpl && (
+            <svg viewBox={tpl.viewBox} preserveAspectRatio="xMidYMid meet"
+              style={{
+                position: 'absolute', inset: 0, width: '100%', height: '100%',
+                pointerEvents: 'none',
+              }}>
+              {tpl.parts.map((p) => (
+                <path key={p.id} d={p.d}
+                  fill="none"
+                  stroke={t.text} strokeWidth="3.5"
+                  strokeLinejoin="round" strokeLinecap="round"
+                />
+              ))}
+            </svg>
+          )}
+          {/* 스티커 레이어 — armed면 통과(새 배치), 아니면 드래그 이동 */}
+          {stickerActions.map((a) => {
+            const dragging = drag && drag.id === a.sticker.id;
+            const sx = dragging ? drag.x : a.sticker.x;
+            const sy = dragging ? drag.y : a.sticker.y;
+            return (
+              <div key={a.sticker.id}
+                onPointerDown={armedSticker ? undefined : (e) => {
+                  e.stopPropagation();
+                  try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
+                  setDrag({ id: a.sticker.id, x: a.sticker.x, y: a.sticker.y });
+                }}
+                onPointerMove={(e) => {
+                  if (!drag || drag.id !== a.sticker.id) return;
+                  e.stopPropagation();
+                  const p = getPt(e);
+                  setDrag({ id: a.sticker.id, x: p.x, y: p.y });
+                }}
+                onPointerUp={(e) => {
+                  if (!drag || drag.id !== a.sticker.id) return;
+                  e.stopPropagation();
+                  try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
+                  const p = getPt(e);
+                  setActions((arr) => arr.map((it) =>
+                    (it.type === 'sticker' && it.sticker.id === a.sticker.id)
+                      ? { ...it, sticker: { ...it.sticker, x: p.x, y: p.y } } : it));
+                  setDrag(null);
+                }}
+                onPointerCancel={(e) => {
+                  if (!drag || drag.id !== a.sticker.id) return;
+                  setDrag(null);
+                }}
+                style={{
+                  position: 'absolute',
+                  left: sx, top: sy,
+                  transform: 'translate(-50%, -50%)',
+                  fontSize: a.sticker.size, lineHeight: 1,
+                  pointerEvents: armedSticker ? 'none' : 'auto',
+                  cursor: armedSticker ? 'default' : 'grab', touchAction: 'none', userSelect: 'none',
+                  filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.18))',
+                }}>{a.sticker.emoji}</div>
+            );
+          })}
           {armedSticker && (
             <div style={{
               position: 'absolute', top: 10, left: 10,
