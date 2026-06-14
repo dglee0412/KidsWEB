@@ -804,6 +804,7 @@ function FreeColoringActivity({ tone, subId, fontSize, onComplete, onFinish, voi
   const [actions, setActions] = useStateA([]);
   const [redoStack, setRedoStack] = useStateA([]);
   const [armedSticker, setArmedSticker] = useStateA(null);
+  const [drag, setDrag] = useStateA(null); // 드래그 중 스티커: { id, x, y } (확정 전 임시 위치)
   const [showStickerPalette, setShowStickerPalette] = useStateA(false);
   const [hue, setHue] = useStateA(0);
   const [saved, setSaved] = useStateA(false);
@@ -821,6 +822,7 @@ function FreeColoringActivity({ tone, subId, fontSize, onComplete, onFinish, voi
     setActions([]);
     setRedoStack([]);
     setArmedSticker(null);
+    setDrag(null);
     setDoneOnce(false);
   }, [currentId]);
 
@@ -881,7 +883,6 @@ function FreeColoringActivity({ tone, subId, fontSize, onComplete, onFinish, voi
       const sticker = { id: Date.now() + Math.random(), emoji: armedSticker, x: p.x, y: p.y, size: 64 };
       setActions((a) => [...a, { type: 'sticker', sticker }]);
       setRedoStack([]);
-      setArmedSticker(null);
       playSfx('sticker');
       if (!doneOnce) { onComplete && onComplete(1); setDoneOnce(true); }
       return;
@@ -946,7 +947,7 @@ function FreeColoringActivity({ tone, subId, fontSize, onComplete, onFinish, voi
     setActions([...actions, first]);
     setRedoStack(rest);
   };
-  const reset = () => { setActions([]); setRedoStack([]); setArmedSticker(null); };
+  const reset = () => { setActions([]); setRedoStack([]); setArmedSticker(null); setDrag(null); };
 
   const onSave = async () => {
     if (!actions.length) { setSaved(true); setTimeout(() => setSaved(false), 1400); return; }
@@ -1147,17 +1148,45 @@ function FreeColoringActivity({ tone, subId, fontSize, onComplete, onFinish, voi
               ))}
             </svg>
           )}
-          {/* 스티커 레이어 (DOM, 화면 표시용) */}
-          {stickerActions.map((a) => (
-            <div key={a.sticker.id} style={{
-              position: 'absolute',
-              left: a.sticker.x, top: a.sticker.y,
-              transform: 'translate(-50%, -50%)',
-              fontSize: a.sticker.size, lineHeight: 1,
-              pointerEvents: 'none', userSelect: 'none',
-              filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.18))',
-            }}>{a.sticker.emoji}</div>
-          ))}
+          {/* 스티커 레이어 — armed면 통과(새 배치), 아니면 드래그 이동 */}
+          {stickerActions.map((a) => {
+            const dragging = drag && drag.id === a.sticker.id;
+            const sx = dragging ? drag.x : a.sticker.x;
+            const sy = dragging ? drag.y : a.sticker.y;
+            return (
+              <div key={a.sticker.id}
+                onPointerDown={armedSticker ? undefined : (e) => {
+                  e.stopPropagation();
+                  try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
+                  setDrag({ id: a.sticker.id, x: a.sticker.x, y: a.sticker.y });
+                }}
+                onPointerMove={(e) => {
+                  if (!drag || drag.id !== a.sticker.id) return;
+                  e.stopPropagation();
+                  const p = getPt(e);
+                  setDrag({ id: a.sticker.id, x: p.x, y: p.y });
+                }}
+                onPointerUp={(e) => {
+                  if (!drag || drag.id !== a.sticker.id) return;
+                  e.stopPropagation();
+                  try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
+                  const fx = drag.x, fy = drag.y;
+                  setActions((arr) => arr.map((it) =>
+                    (it.type === 'sticker' && it.sticker.id === a.sticker.id)
+                      ? { ...it, sticker: { ...it.sticker, x: fx, y: fy } } : it));
+                  setDrag(null);
+                }}
+                style={{
+                  position: 'absolute',
+                  left: sx, top: sy,
+                  transform: 'translate(-50%, -50%)',
+                  fontSize: a.sticker.size, lineHeight: 1,
+                  pointerEvents: armedSticker ? 'none' : 'auto',
+                  cursor: 'grab', touchAction: 'none', userSelect: 'none',
+                  filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.18))',
+                }}>{a.sticker.emoji}</div>
+            );
+          })}
           {armedSticker && (
             <div style={{
               position: 'absolute', top: 10, left: 10,
