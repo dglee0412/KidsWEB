@@ -2238,6 +2238,7 @@ function SubtractionActivity({ tone, subId, fontSize, onComplete, onFinish, voic
         }
       }, 1100);
     } else {
+      playSfx('wrong');
       setStatus('wrong'); setPicked(n);
       setTimeout(() => { setStatus('q'); setPicked(null); }, 700);
     }
@@ -2314,6 +2315,7 @@ function SubtractionActivity({ tone, subId, fontSize, onComplete, onFinish, voic
                 <button key={n} onClick={() => onPick(n)}
                   onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.92)' }], { duration: 130 })}
                   style={{
+                    position: 'relative',
                     height: 92, fontSize: 56, fontWeight: 900,
                     background: isRight ? t.cat.code : isWrong ? t.cat.shape : '#fff',
                     color: t.text,
@@ -2322,7 +2324,11 @@ function SubtractionActivity({ tone, subId, fontSize, onComplete, onFinish, voic
                     cursor: 'pointer', fontFamily: 'inherit',
                     boxShadow: t.shadow,
                     fontVariantNumeric: 'tabular-nums',
-                  }}>{n}</button>
+                  }}>
+                  {n}
+                  {isRight && <PickMark kind="right" />}
+                  {isWrong && <PickMark kind="wrong" />}
+                </button>
               );
             })}
           </div>
@@ -2430,6 +2436,7 @@ function CompareActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
         else { setRound(newRound()); setStatus('q'); setPicked(null); }
       }, 900);
     } else {
+      playSfx('wrong');
       setStatus('wrong'); setPicked(side);
       setTimeout(() => { setStatus('q'); setPicked(null); }, 650);
     }
@@ -2444,6 +2451,7 @@ function CompareActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
       <button onClick={() => onPick(side)}
         onPointerDown={(e) => e.currentTarget.animate([{transform:'scale(1)'},{transform:'scale(0.95)'}],{duration:130})}
         style={{
+          position: 'relative',
           flex: 1, height: '100%',
           background: isRight ? t.cat.code : isWrong ? t.cat.shape : '#fff',
           border: t.outline === 'none' ? `4px solid ${t.text}` : t.outline,
@@ -2458,6 +2466,8 @@ function CompareActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
         {Array.from({ length: n }).map((_, i) => (
           <span key={i} style={{ fontSize: 56, lineHeight: 1, animation: `kw-pop 0.4s ease ${i * 0.04}s both` }}>{obj}</span>
         ))}
+        {isRight && <PickMark kind="right" />}
+        {isWrong && <PickMark kind="wrong" />}
       </button>
     );
   };
@@ -2554,6 +2564,7 @@ function OrderActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
         else { setRound(newRound()); setStatus('q'); setPicked(null); }
       }, 900);
     } else {
+      playSfx('wrong');
       setStatus('wrong'); setPicked(n);
       setTimeout(() => { setStatus('q'); setPicked(null); }, 650);
     }
@@ -2617,6 +2628,7 @@ function OrderActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
                 <button key={n} onClick={() => onPick(n)}
                   onPointerDown={(e) => e.currentTarget.animate([{transform:'scale(1)'},{transform:'scale(0.92)'}],{duration:130})}
                   style={{
+                    position: 'relative',
                     height: 92, fontSize: 56, fontWeight: 900,
                     background: isRight ? t.cat.code : isWrong ? t.cat.shape : '#fff',
                     color: t.text,
@@ -2625,7 +2637,11 @@ function OrderActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
                     cursor: 'pointer', fontFamily: 'inherit',
                     boxShadow: t.shadow,
                     fontVariantNumeric: 'tabular-nums',
-                  }}>{n}</button>
+                  }}>
+                  {n}
+                  {isRight && <PickMark kind="right" />}
+                  {isWrong && <PickMark kind="wrong" />}
+                </button>
               );
             })}
           </div>
@@ -2797,6 +2813,7 @@ function AdditionActivity({ tone, subId, fontSize, onComplete, onFinish, voiceSh
                 <button key={n} onClick={() => onPick(n)}
                   onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.92)' }], { duration: 130 })}
                   style={{
+                    position: 'relative',
                     height: 92, fontSize: 56, fontWeight: 900,
                     background: isRight ? t.cat.code : isWrong ? t.cat.shape : '#fff',
                     color: t.text,
@@ -2806,7 +2823,11 @@ function AdditionActivity({ tone, subId, fontSize, onComplete, onFinish, voiceSh
                     boxShadow: t.shadow,
                     fontVariantNumeric: 'tabular-nums',
                     transition: 'background 0.2s',
-                  }}>{n}</button>
+                  }}>
+                  {n}
+                  {isRight && <PickMark kind="right" />}
+                  {isWrong && <PickMark kind="wrong" />}
+                </button>
               );
             })}
           </div>
@@ -2933,19 +2954,20 @@ function MathActivity({ tone, subId, fontSize, onComplete, voiceShow }) {
   };
   const [round, setRound] = useStateA(newRound);
   const [status, setStatus] = useStateA('q'); // q | right | wrong
+  const [picked, setPicked] = useStateA(null);
   const [streak, setStreak] = useStateA(0);
 
   const onPick = (n) => {
     if (status !== 'q') return;
     if (n === round.target) {
-      setStatus('right');
+      setStatus('right'); setPicked(n);
       onComplete && onComplete(1);
       setStreak((s) => s + 1);
-      setTimeout(() => { setRound(newRound()); setStatus('q'); }, 1200);
+      setTimeout(() => { setRound(newRound()); setStatus('q'); setPicked(null); }, 1200);
     } else {
       playSfx('wrong');
-      setStatus('wrong');
-      setTimeout(() => setStatus('q'), 700);
+      setStatus('wrong'); setPicked(n);
+      setTimeout(() => { setStatus('q'); setPicked(null); }, 700);
     }
   };
 
@@ -2978,19 +3000,28 @@ function MathActivity({ tone, subId, fontSize, onComplete, voiceShow }) {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
-        {round.opts.map((n) => (
-          <button key={n} onClick={() => onPick(n)}
-            onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.92)' }], { duration: 130 })}
-            style={{
-              height: 96, fontSize: 56, fontWeight: 900,
-              background: status === 'right' && n === round.target ? t.cat.code : '#fff',
-              color: t.text,
-              border: t.outline === 'none' ? `4px solid ${t.text}` : t.outline,
-              borderRadius: t.cardRadius,
-              cursor: 'pointer', fontFamily: 'inherit',
-              boxShadow: t.shadow,
-            }}>{n}</button>
-        ))}
+        {round.opts.map((n) => {
+          const isRight = status === 'right' && n === round.target;
+          const isWrong = status === 'wrong' && picked === n;
+          return (
+            <button key={n} onClick={() => onPick(n)}
+              onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.92)' }], { duration: 130 })}
+              style={{
+                position: 'relative',
+                height: 96, fontSize: 56, fontWeight: 900,
+                background: isRight ? t.cat.code : isWrong ? t.cat.shape : '#fff',
+                color: t.text,
+                border: t.outline === 'none' ? `4px solid ${t.text}` : t.outline,
+                borderRadius: t.cardRadius,
+                cursor: 'pointer', fontFamily: 'inherit',
+                boxShadow: t.shadow,
+              }}>
+              {n}
+              {isRight && <PickMark kind="right" />}
+              {isWrong && <PickMark kind="wrong" />}
+            </button>
+          );
+        })}
       </div>
 
       <VoiceGuide tone={t} show={voiceShow} text={status === 'right' ? '정답! 🎉' : '몇 개인지 세어볼까?'} fontSize={fontSize - 4} />
@@ -3843,6 +3874,7 @@ function PatternActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
         }
       }, 950);
     } else {
+      playSfx('wrong');
       setStatus('wrong'); setPicked(s);
       setTimeout(() => { setStatus('q'); setPicked(null); }, 650);
     }
@@ -3919,6 +3951,7 @@ function PatternActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
                 <button key={i} onClick={() => onPick(s)}
                   onPointerDown={(e) => e.currentTarget.animate([{transform:'scale(1)'},{transform:'scale(0.92)'}],{duration:130})}
                   style={{
+                    position: 'relative',
                     height: 96, fontSize: 56,
                     background: isRight ? t.cat.code : isWrong ? t.cat.shape : '#fff',
                     border: t.outline === 'none' ? `4px solid ${t.text}` : t.outline,
@@ -3926,7 +3959,11 @@ function PatternActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
                     cursor: 'pointer', fontFamily: 'inherit',
                     boxShadow: t.shadow,
                     transition: 'background 0.2s',
-                  }}>{s}</button>
+                  }}>
+                  {s}
+                  {isRight && <PickMark kind="right" />}
+                  {isWrong && <PickMark kind="wrong" />}
+                </button>
               );
             })}
           </div>

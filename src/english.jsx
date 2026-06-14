@@ -224,10 +224,12 @@ function PhonicsActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
               return (
                 <button key={i} onClick={() => pick(i)}
                   onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.92)' }], { duration: 130 })}
-                  style={{ height: 96, fontSize: 56, fontWeight: 900, fontFamily: 'inherit', cursor: 'pointer',
+                  style={{ position: 'relative', height: 96, fontSize: 56, fontWeight: 900, fontFamily: 'inherit', cursor: 'pointer',
                     background: isRight ? t.cat.code : isWrong ? t.cat.shape : '#fff',
                     border: t.outline === 'none' ? `4px solid ${t.text}` : t.outline, borderRadius: t.cardRadius, boxShadow: t.shadow }}>
                   {ALPHABET[i].u}
+                  {isRight && <PickMark kind="right" />}
+                  {isWrong && <PickMark kind="wrong" />}
                 </button>
               );
             })}
