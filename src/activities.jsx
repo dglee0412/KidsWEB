@@ -1170,10 +1170,14 @@ function FreeColoringActivity({ tone, subId, fontSize, onComplete, onFinish, voi
                   if (!drag || drag.id !== a.sticker.id) return;
                   e.stopPropagation();
                   try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
-                  const fx = drag.x, fy = drag.y;
+                  const p = getPt(e);
                   setActions((arr) => arr.map((it) =>
                     (it.type === 'sticker' && it.sticker.id === a.sticker.id)
-                      ? { ...it, sticker: { ...it.sticker, x: fx, y: fy } } : it));
+                      ? { ...it, sticker: { ...it.sticker, x: p.x, y: p.y } } : it));
+                  setDrag(null);
+                }}
+                onPointerCancel={(e) => {
+                  if (!drag || drag.id !== a.sticker.id) return;
                   setDrag(null);
                 }}
                 style={{
@@ -1182,7 +1186,7 @@ function FreeColoringActivity({ tone, subId, fontSize, onComplete, onFinish, voi
                   transform: 'translate(-50%, -50%)',
                   fontSize: a.sticker.size, lineHeight: 1,
                   pointerEvents: armedSticker ? 'none' : 'auto',
-                  cursor: 'grab', touchAction: 'none', userSelect: 'none',
+                  cursor: armedSticker ? 'default' : 'grab', touchAction: 'none', userSelect: 'none',
                   filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.18))',
                 }}>{a.sticker.emoji}</div>
             );
