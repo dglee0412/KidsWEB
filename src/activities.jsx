@@ -1069,6 +1069,20 @@ function FreeColoringActivity({ tone, subId, fontSize, onComplete, onFinish, voi
         overflowX: 'auto', overflowY: 'hidden',
         alignItems: 'center',
       }}>
+          <button key="blank" onClick={() => setCurrentId('blank')}
+            onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.94)' }], { duration: 130 })}
+            style={{
+              flex: '0 0 auto', width: 130, height: 60,
+              background: currentId === 'blank' ? colorCat : '#fff',
+              color: currentId === 'blank' ? t.textOnColor : t.text,
+              border: currentId === 'blank' ? (t.outline === 'none' ? 'none' : t.outline) : accentBorder,
+              borderRadius: t.cardRadius, cursor: 'pointer', fontFamily: 'inherit',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              boxShadow: currentId === 'blank' ? t.shadow : t.shadowSm, padding: '0 10px',
+            }}>
+            <span style={{ fontSize: 26, lineHeight: 1 }}>📄</span>
+            <span style={{ fontSize: fontSize - 6, fontWeight: 900, whiteSpace: 'nowrap' }}>빈 종이</span>
+          </button>
         {visibleIds.map((id) => {
           const x = COLORING_TEMPLATES[id];
           const active = id === currentId;
@@ -1117,20 +1131,22 @@ function FreeColoringActivity({ tone, subId, fontSize, onComplete, onFinish, voi
               touchAction: 'none',
               cursor: armedSticker ? 'cell' : 'crosshair',
             }} />
-          {/* 도안 윤곽선 레이어 (캔버스 위, 항상 보임, 포인터 이벤트 차단 안 함) */}
-          <svg viewBox={tpl.viewBox} preserveAspectRatio="xMidYMid meet"
-            style={{
-              position: 'absolute', inset: 0, width: '100%', height: '100%',
-              pointerEvents: 'none',
-            }}>
-            {tpl.parts.map((p) => (
-              <path key={p.id} d={p.d}
-                fill="none"
-                stroke={t.text} strokeWidth="3.5"
-                strokeLinejoin="round" strokeLinecap="round"
-              />
-            ))}
-          </svg>
+          {/* 도안 윤곽선 레이어 — 빈 종이(tpl 없음)면 렌더 안 함 */}
+          {tpl && (
+            <svg viewBox={tpl.viewBox} preserveAspectRatio="xMidYMid meet"
+              style={{
+                position: 'absolute', inset: 0, width: '100%', height: '100%',
+                pointerEvents: 'none',
+              }}>
+              {tpl.parts.map((p) => (
+                <path key={p.id} d={p.d}
+                  fill="none"
+                  stroke={t.text} strokeWidth="3.5"
+                  strokeLinejoin="round" strokeLinecap="round"
+                />
+              ))}
+            </svg>
+          )}
           {/* 스티커 레이어 (DOM, 화면 표시용) */}
           {stickerActions.map((a) => (
             <div key={a.sticker.id} style={{
