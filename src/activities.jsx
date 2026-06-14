@@ -1412,6 +1412,20 @@ const HANGUL_WORDS = [
   { word: '별',     emoji: '⭐' },
 ];
 
+const HANGUL_WORD_LEVELS = [
+  { targets: 1, options: 3, questions: 8 },
+  { targets: 1, options: 4, questions: 10 },
+  { targets: 1, options: 5, questions: 10 },
+  { targets: 2, options: 5, questions: 8 },
+  { targets: 3, options: 6, questions: 10 },
+];
+export function hangulWordLevelConfig(level) {
+  const i = Math.max(0, Math.min(HANGUL_WORD_LEVELS.length - 1, level));
+  const c = HANGUL_WORD_LEVELS[i];
+  const options = Math.max(c.targets + 1, Math.min(c.options, HANGUL_WORDS.length));
+  return { targets: c.targets, options, questions: c.questions };
+}
+
 // 따라치기 상태머신(순수). 기대 id와 비교 → step/result 산출.
 export function nextFollowState(pattern, step, id) {
   if (!pattern.length) return { step, result: 'idle' };
@@ -1472,174 +1486,119 @@ function HangulWordsActivity({ tone, fontSize, onComplete, onFinish, voiceShow }
   const t = tone;
   const color = t.cat.hangul;
   const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
-  const TOTAL_Q = 10;
+  const [levelIdx, setLevelIdx] = useStateA(0);
+  const cfg = hangulWordLevelConfig(levelIdx);
+  const POOL_WORDS = HANGUL_WORDS.map((w) => w.word);
+  const byWord = (w) => HANGUL_WORDS.find((x) => x.word === w);
 
   const newRound = () => {
-    const pool = shuffleA(HANGUL_WORDS);
-    const target = pool[0];
-    const distractors = pool.slice(1, 3);
-    const opts = shuffleA([target, ...distractors]);
-    return { target, opts };
+    const shuffled = shuffleA(HANGUL_WORDS);
+    const targets = shuffled.slice(0, cfg.targets).map((x) => x.word);
+    return { targets, opts: multiTargetOptions(targets, cfg.options, POOL_WORDS) };
   };
-
   const [round, setRound] = useStateA(newRound);
-  const [status, setStatus] = useStateA('q');   // q | right | wrong
-  const [picked, setPicked] = useStateA(null);
   const [progress, setProgress] = useStateA(0);
   const [done, setDone] = useStateA(false);
+  const mp = useMultiPick();
+  const timersRef = useRefA([]);
+  const addTimer = (id) => timersRef.current.push(id);
+  useEffectA(() => () => { timersRef.current.forEach((id) => clearTimeout(id)); }, []);
+  useEffectA(() => {
+    timersRef.current.forEach((id) => clearTimeout(id));
+    timersRef.current = [];
+    setProgress(0); setDone(false); setRound(newRound()); mp.reset();
+  }, [levelIdx]);
 
   const onPick = (w) => {
-    if (status !== 'q' || done) return;
-    if (w.word === round.target.word) {
-      setStatus('right'); setPicked(w.word);
+    if (done) return;
+    const r = mp.pick(w, round.targets);
+    if (r === 'wrong') playSfx('wrong');
+    else if (r === 'correct') playSfx('correct');
+    else if (r === 'complete') {
+      playSfx('correct');
       onComplete && onComplete(1);
-      const nextN = progress + 1;
-      setProgress(nextN);
-      setTimeout(() => {
-        if (nextN >= TOTAL_Q) {
-          setDone(true);
-          onComplete && onComplete(3);
-          onFinish && onFinish();
-        } else {
-          setRound(newRound()); setStatus('q'); setPicked(null);
-        }
-      }, 950);
-    } else {
-      setStatus('wrong'); setPicked(w.word);
-      setTimeout(() => { setStatus('q'); setPicked(null); }, 650);
+      const nextN = progress + 1; setProgress(nextN);
+      addTimer(setTimeout(() => {
+        if (nextN >= cfg.questions) { setDone(true); onComplete && onComplete(3); }
+        else { setRound(newRound()); mp.reset(); }
+      }, 850));
     }
   };
+  const restart = () => { setProgress(0); setDone(false); setRound(newRound()); mp.reset(); };
+  const nextLevel = () => { if (levelIdx < HANGUL_WORD_LEVELS.length - 1) setLevelIdx(levelIdx + 1); else onFinish && onFinish(); };
+  const prevLevel = () => { if (levelIdx > 0) setLevelIdx(levelIdx - 1); };
 
-  const restart = () => { setProgress(0); setDone(false); setStatus('q'); setPicked(null); setRound(newRound()); };
-
+  const multi = cfg.targets > 1;
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
-      {/* 타이틀 */}
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', position: 'relative' }}>
       <div style={{ height: 88, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
         <div style={{ fontSize: fontSize + 14, fontWeight: 900, color: t.text, display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 36 }}>🍓</span>
-          낱말 익히기
-          <span style={{
-            fontSize: fontSize - 2, fontWeight: 900,
-            background: t.accent, color: t.text,
-            padding: '4px 14px', borderRadius: 16,
-            border: t.outline === 'none' ? 'none' : t.outline,
-            marginLeft: 6,
-          }}>Lv.3</span>
+          낱말 맞추기
+          <span style={{ fontSize: fontSize - 2, fontWeight: 900, background: t.accent, color: t.text,
+            padding: '4px 14px', borderRadius: 16, border: t.outline === 'none' ? 'none' : t.outline, marginLeft: 6 }}>Lv.{levelIdx + 1}</span>
         </div>
+        <LevelStepper tone={t} cur={levelIdx} total={HANGUL_WORD_LEVELS.length} onPrev={prevLevel} onNext={nextLevel} />
       </div>
 
       {!done ? (
         <React.Fragment>
-          {/* 문제 카드 — 큰 이모지 + "무슨 낱말일까?" */}
-          <div style={{ flex: 1, padding: '0 32px', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0 }}>
-            <div style={{
-              width: '100%', maxWidth: 620, height: '100%',
-              background: color,
-              border: t.outline === 'none' ? 'none' : t.outline,
-              borderRadius: t.cardRadius + 8,
-              padding: '24px 28px',
-              boxShadow: t.shadow,
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              gap: 16,
-              transform: status === 'wrong' ? 'translateX(-6px)' : 'translateX(0)',
-              transition: 'transform 0.08s',
-              boxSizing: 'border-box',
-            }}>
-              <div style={{
-                fontSize: fontSize, fontWeight: 900, color: t.textOnColor,
-                background: 'rgba(0,0,0,0.18)', padding: '6px 16px', borderRadius: 16,
-              }}>무슨 낱말일까?</div>
-              <div key={round.target.word} style={{
-                fontSize: 200, lineHeight: 1,
-                animation: 'kw-pop 0.5s cubic-bezier(.34,1.56,.64,1) both',
-                filter: 'drop-shadow(0 6px 0 rgba(0,0,0,0.18))',
-              }}>{round.target.emoji}</div>
-              {status === 'right' && (
-                <div style={{
-                  fontSize: fontSize + 16, fontWeight: 900, color: '#fff',
-                  background: 'rgba(0,0,0,0.35)',
-                  padding: '8px 24px', borderRadius: 20,
-                }}>{round.target.word}!</div>
-              )}
-            </div>
-          </div>
-
-          {/* 3지선다 */}
-          <div style={{ flex: '0 0 auto', padding: '14px 32px 4px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
-            {round.opts.map((w) => {
-              const isRight = status === 'right' && w.word === round.target.word;
-              const isWrong = status === 'wrong' && picked === w.word;
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, minHeight: 0, padding: '0 32px', flexWrap: 'wrap' }}>
+            {round.targets.map((w) => {
+              const got = mp.found.includes(w);
               return (
-                <button key={w.word} onClick={() => onPick(w)}
-                  onPointerDown={(e) => e.currentTarget.animate([{transform:'scale(1)'},{transform:'scale(0.92)'}],{duration:130})}
-                  style={{
-                    height: 88, fontSize: 36, fontWeight: 900,
-                    background: isRight ? t.cat.code : isWrong ? t.cat.shape : '#fff',
-                    color: t.text,
-                    border: t.outline === 'none' ? `4px solid ${t.text}` : t.outline,
-                    borderRadius: t.cardRadius,
-                    cursor: 'pointer', fontFamily: 'inherit',
-                    boxShadow: t.shadow,
-                    transition: 'background 0.2s',
-                  }}>{w.word}</button>
+                <div key={w} style={{ background: color, border: t.outline === 'none' ? 'none' : t.outline, borderRadius: t.cardRadius + 8,
+                  padding: multi ? '18px 30px' : '24px 48px', boxShadow: t.shadow, opacity: got ? 0.5 : 1, transition: 'opacity 0.3s' }}>
+                  <span style={{ fontSize: multi ? 120 : 180, lineHeight: 1 }}>{byWord(w).emoji}</span>
+                </div>
               );
             })}
           </div>
-
-          {/* 진행 도트 */}
+          <div style={{ flex: '0 0 auto', padding: '14px 32px 4px', display: 'grid', gridTemplateColumns: `repeat(${cfg.options}, 1fr)`, gap: 14 }}>
+            {round.opts.map((w) => {
+              const isRight = mp.found.includes(w);
+              const isWrong = mp.wrongKey === w;
+              return (
+                <button key={w} onClick={() => onPick(w)} disabled={isRight}
+                  onPointerDown={(e) => !isRight && e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.92)' }], { duration: 130 })}
+                  style={{ position: 'relative', height: 84, fontSize: 34, fontWeight: 900, fontFamily: 'inherit',
+                    cursor: isRight ? 'default' : 'pointer', background: isRight ? t.cat.code : isWrong ? t.cat.shape : '#fff',
+                    border: t.outline === 'none' ? `4px solid ${t.text}` : t.outline, borderRadius: t.cardRadius, boxShadow: t.shadow,
+                    animation: isWrong ? 'kw-shake 0.4s ease' : 'none' }}>
+                  {w}
+                  {isRight && <PickMark kind="right" />}
+                  {isWrong && <PickMark kind="wrong" />}
+                </button>
+              );
+            })}
+          </div>
           <div style={{ flex: '0 0 auto', padding: '12px 32px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ flex: 1, display: 'flex', gap: 10, alignItems: 'center' }}>
-              {Array.from({ length: TOTAL_Q }).map((_, i) => {
-                const filled = i < progress;
-                return (
-                  <span key={i} style={{
-                    width: 22, height: 22, borderRadius: 11,
-                    background: filled ? color : '#fff',
-                    border: filled ? (t.outline === 'none' ? 'none' : `2px solid ${t.text}`) : `2px solid rgba(0,0,0,0.18)`,
-                    boxShadow: filled ? t.shadowSm : 'none',
-                    transition: 'all 0.25s ease',
-                    display: 'inline-block',
-                  }} />
-                );
-              })}
+            <div style={{ flex: 1, display: 'flex', gap: 10 }}>
+              {Array.from({ length: cfg.questions }).map((_, i) => (
+                <span key={i} style={{ width: 20, height: 20, borderRadius: 10, background: i < progress ? color : '#fff',
+                  border: i < progress ? 'none' : `2px solid rgba(0,0,0,0.18)` }} />
+              ))}
             </div>
-            <div style={{ fontSize: fontSize, fontWeight: 900, color: t.text, fontVariantNumeric: 'tabular-nums', minWidth: 70, textAlign: 'right' }}>
-              {progress}/{TOTAL_Q}
-            </div>
+            <div style={{ fontSize: fontSize, fontWeight: 900, color: t.text }}>{progress}/{cfg.questions}</div>
           </div>
         </React.Fragment>
       ) : (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, padding: '0 32px 24px' }}>
-          <div style={{ fontSize: 160, lineHeight: 1, animation: 'kw-pop 0.6s cubic-bezier(.34,1.56,.64,1) both' }}>🎉</div>
-          <div style={{ fontSize: fontSize + 28, fontWeight: 900, color: t.text }}>낱말 다 맞췄어!</div>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            background: '#fff', border: accentBorder, borderRadius: 999,
-            padding: '10px 22px', boxShadow: t.shadowSm,
-            fontSize: fontSize + 4, fontWeight: 900, color: t.text,
-          }}>
-            <span style={{ fontSize: 36 }}>⭐</span>
-            {TOTAL_Q + 3}개 별 획득!
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18 }}>
+          <div style={{ fontSize: 140, animation: 'kw-pop 0.6s cubic-bezier(.34,1.56,.64,1) both' }}>🎉</div>
+          <div style={{ fontSize: fontSize + 22, fontWeight: 900, color: t.text }}>{levelIdx < HANGUL_WORD_LEVELS.length - 1 ? `Lv.${levelIdx + 1} 성공!` : '모든 레벨 성공!'}</div>
+          <div style={{ display: 'flex', gap: 14 }}>
+            <button onClick={restart} style={{ background: '#fff', color: t.text, border: accentBorder, borderRadius: 28,
+              padding: '16px 28px', fontSize: fontSize + 2, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadowSm }}>🔄 다시</button>
+            <button onClick={nextLevel}
+              onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.94)' }], { duration: 140 })}
+              style={{ background: color, color: t.textOnColor, border: t.outline === 'none' ? 'none' : t.outline, borderRadius: 28,
+                padding: '16px 30px', fontSize: fontSize + 2, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadow }}>
+              {levelIdx < HANGUL_WORD_LEVELS.length - 1 ? '다음 레벨 ▶' : '끝내기 🎀'}
+            </button>
           </div>
-          <button onClick={restart}
-            onPointerDown={(e) => e.currentTarget.animate([{transform:'scale(1)'},{transform:'scale(0.94)'}],{duration:140})}
-            style={{
-              background: color, color: t.textOnColor,
-              border: t.outline === 'none' ? 'none' : t.outline,
-              borderRadius: 32, padding: '18px 36px', marginTop: 8,
-              fontSize: fontSize + 6, fontWeight: 900,
-              cursor: 'pointer', fontFamily: 'inherit',
-              boxShadow: t.shadow,
-              display: 'inline-flex', alignItems: 'center', gap: 10,
-            }}>🔄 다시 풀기</button>
         </div>
       )}
-
-      <VoiceGuide tone={t}
-        show={voiceShow}
-        text={done ? '잘했어!' : status === 'right' ? round.target.word + '!' : '무슨 낱말일까?'}
-        fontSize={fontSize - 4} />
+      <VoiceGuide tone={t} show={voiceShow} text={done ? '잘했어!' : multi ? '그림에 맞는 낱말을 모두 골라봐' : '무슨 낱말일까?'} fontSize={fontSize - 4} />
     </div>
   );
 }
@@ -2279,6 +2238,7 @@ function SubtractionActivity({ tone, subId, fontSize, onComplete, onFinish, voic
         }
       }, 1100);
     } else {
+      playSfx('wrong');
       setStatus('wrong'); setPicked(n);
       setTimeout(() => { setStatus('q'); setPicked(null); }, 700);
     }
@@ -2355,6 +2315,7 @@ function SubtractionActivity({ tone, subId, fontSize, onComplete, onFinish, voic
                 <button key={n} onClick={() => onPick(n)}
                   onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.92)' }], { duration: 130 })}
                   style={{
+                    position: 'relative',
                     height: 92, fontSize: 56, fontWeight: 900,
                     background: isRight ? t.cat.code : isWrong ? t.cat.shape : '#fff',
                     color: t.text,
@@ -2363,7 +2324,11 @@ function SubtractionActivity({ tone, subId, fontSize, onComplete, onFinish, voic
                     cursor: 'pointer', fontFamily: 'inherit',
                     boxShadow: t.shadow,
                     fontVariantNumeric: 'tabular-nums',
-                  }}>{n}</button>
+                  }}>
+                  {n}
+                  {isRight && <PickMark kind="right" />}
+                  {isWrong && <PickMark kind="wrong" />}
+                </button>
               );
             })}
           </div>
@@ -2471,6 +2436,7 @@ function CompareActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
         else { setRound(newRound()); setStatus('q'); setPicked(null); }
       }, 900);
     } else {
+      playSfx('wrong');
       setStatus('wrong'); setPicked(side);
       setTimeout(() => { setStatus('q'); setPicked(null); }, 650);
     }
@@ -2485,6 +2451,7 @@ function CompareActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
       <button onClick={() => onPick(side)}
         onPointerDown={(e) => e.currentTarget.animate([{transform:'scale(1)'},{transform:'scale(0.95)'}],{duration:130})}
         style={{
+          position: 'relative',
           flex: 1, height: '100%',
           background: isRight ? t.cat.code : isWrong ? t.cat.shape : '#fff',
           border: t.outline === 'none' ? `4px solid ${t.text}` : t.outline,
@@ -2499,6 +2466,8 @@ function CompareActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
         {Array.from({ length: n }).map((_, i) => (
           <span key={i} style={{ fontSize: 56, lineHeight: 1, animation: `kw-pop 0.4s ease ${i * 0.04}s both` }}>{obj}</span>
         ))}
+        {isRight && <PickMark kind="right" />}
+        {isWrong && <PickMark kind="wrong" />}
       </button>
     );
   };
@@ -2595,6 +2564,7 @@ function OrderActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
         else { setRound(newRound()); setStatus('q'); setPicked(null); }
       }, 900);
     } else {
+      playSfx('wrong');
       setStatus('wrong'); setPicked(n);
       setTimeout(() => { setStatus('q'); setPicked(null); }, 650);
     }
@@ -2658,6 +2628,7 @@ function OrderActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
                 <button key={n} onClick={() => onPick(n)}
                   onPointerDown={(e) => e.currentTarget.animate([{transform:'scale(1)'},{transform:'scale(0.92)'}],{duration:130})}
                   style={{
+                    position: 'relative',
                     height: 92, fontSize: 56, fontWeight: 900,
                     background: isRight ? t.cat.code : isWrong ? t.cat.shape : '#fff',
                     color: t.text,
@@ -2666,7 +2637,11 @@ function OrderActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
                     cursor: 'pointer', fontFamily: 'inherit',
                     boxShadow: t.shadow,
                     fontVariantNumeric: 'tabular-nums',
-                  }}>{n}</button>
+                  }}>
+                  {n}
+                  {isRight && <PickMark kind="right" />}
+                  {isWrong && <PickMark kind="wrong" />}
+                </button>
               );
             })}
           </div>
@@ -2838,6 +2813,7 @@ function AdditionActivity({ tone, subId, fontSize, onComplete, onFinish, voiceSh
                 <button key={n} onClick={() => onPick(n)}
                   onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.92)' }], { duration: 130 })}
                   style={{
+                    position: 'relative',
                     height: 92, fontSize: 56, fontWeight: 900,
                     background: isRight ? t.cat.code : isWrong ? t.cat.shape : '#fff',
                     color: t.text,
@@ -2847,7 +2823,11 @@ function AdditionActivity({ tone, subId, fontSize, onComplete, onFinish, voiceSh
                     boxShadow: t.shadow,
                     fontVariantNumeric: 'tabular-nums',
                     transition: 'background 0.2s',
-                  }}>{n}</button>
+                  }}>
+                  {n}
+                  {isRight && <PickMark kind="right" />}
+                  {isWrong && <PickMark kind="wrong" />}
+                </button>
               );
             })}
           </div>
@@ -2974,19 +2954,20 @@ function MathActivity({ tone, subId, fontSize, onComplete, voiceShow }) {
   };
   const [round, setRound] = useStateA(newRound);
   const [status, setStatus] = useStateA('q'); // q | right | wrong
+  const [picked, setPicked] = useStateA(null);
   const [streak, setStreak] = useStateA(0);
 
   const onPick = (n) => {
     if (status !== 'q') return;
     if (n === round.target) {
-      setStatus('right');
+      setStatus('right'); setPicked(n);
       onComplete && onComplete(1);
       setStreak((s) => s + 1);
-      setTimeout(() => { setRound(newRound()); setStatus('q'); }, 1200);
+      setTimeout(() => { setRound(newRound()); setStatus('q'); setPicked(null); }, 1200);
     } else {
       playSfx('wrong');
-      setStatus('wrong');
-      setTimeout(() => setStatus('q'), 700);
+      setStatus('wrong'); setPicked(n);
+      setTimeout(() => { setStatus('q'); setPicked(null); }, 700);
     }
   };
 
@@ -3019,19 +3000,28 @@ function MathActivity({ tone, subId, fontSize, onComplete, voiceShow }) {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
-        {round.opts.map((n) => (
-          <button key={n} onClick={() => onPick(n)}
-            onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.92)' }], { duration: 130 })}
-            style={{
-              height: 96, fontSize: 56, fontWeight: 900,
-              background: status === 'right' && n === round.target ? t.cat.code : '#fff',
-              color: t.text,
-              border: t.outline === 'none' ? `4px solid ${t.text}` : t.outline,
-              borderRadius: t.cardRadius,
-              cursor: 'pointer', fontFamily: 'inherit',
-              boxShadow: t.shadow,
-            }}>{n}</button>
-        ))}
+        {round.opts.map((n) => {
+          const isRight = status === 'right' && n === round.target;
+          const isWrong = status === 'wrong' && picked === n;
+          return (
+            <button key={n} onClick={() => onPick(n)}
+              onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.92)' }], { duration: 130 })}
+              style={{
+                position: 'relative',
+                height: 96, fontSize: 56, fontWeight: 900,
+                background: isRight ? t.cat.code : isWrong ? t.cat.shape : '#fff',
+                color: t.text,
+                border: t.outline === 'none' ? `4px solid ${t.text}` : t.outline,
+                borderRadius: t.cardRadius,
+                cursor: 'pointer', fontFamily: 'inherit',
+                boxShadow: t.shadow,
+              }}>
+              {n}
+              {isRight && <PickMark kind="right" />}
+              {isWrong && <PickMark kind="wrong" />}
+            </button>
+          );
+        })}
       </div>
 
       <VoiceGuide tone={t} show={voiceShow} text={status === 'right' ? '정답! 🎉' : '몇 개인지 세어볼까?'} fontSize={fontSize - 4} />
@@ -3823,11 +3813,12 @@ function MusicActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow 
 // ─────────────────────────────────────────────────────────────
 const MEMORY_EMOJI = ['🐶','🐱','🐰','🦊','🐻','🐼','🦁','🐯','🐸','🐵'];
 
-// 카드뒤집기 레벨 — 0:6쌍, 1:8쌍, 2:10쌍
 const MEMORY_LEVELS = [
-  { pairs: 6, cols: 4 },
-  { pairs: 8, cols: 4 },
-  { pairs: 10, cols: 5 },
+  { group: 2, count: 6,  cols: 4 },
+  { group: 2, count: 8,  cols: 4 },
+  { group: 2, count: 10, cols: 5 },
+  { group: 3, count: 4,  cols: 4 },
+  { group: 3, count: 6,  cols: 6 },
 ];
 export function memoryLevelConfig(level) {
   const i = Math.max(0, Math.min(MEMORY_LEVELS.length - 1, level));
@@ -3883,6 +3874,7 @@ function PatternActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
         }
       }, 950);
     } else {
+      playSfx('wrong');
       setStatus('wrong'); setPicked(s);
       setTimeout(() => { setStatus('q'); setPicked(null); }, 650);
     }
@@ -3959,6 +3951,7 @@ function PatternActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
                 <button key={i} onClick={() => onPick(s)}
                   onPointerDown={(e) => e.currentTarget.animate([{transform:'scale(1)'},{transform:'scale(0.92)'}],{duration:130})}
                   style={{
+                    position: 'relative',
                     height: 96, fontSize: 56,
                     background: isRight ? t.cat.code : isWrong ? t.cat.shape : '#fff',
                     border: t.outline === 'none' ? `4px solid ${t.text}` : t.outline,
@@ -3966,7 +3959,11 @@ function PatternActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
                     cursor: 'pointer', fontFamily: 'inherit',
                     boxShadow: t.shadow,
                     transition: 'background 0.2s',
-                  }}>{s}</button>
+                  }}>
+                  {s}
+                  {isRight && <PickMark kind="right" />}
+                  {isWrong && <PickMark kind="wrong" />}
+                </button>
               );
             })}
           </div>
@@ -4036,16 +4033,70 @@ function shuffle(arr) {
   return a;
 }
 
+// ── 멀티선택 공용(그림자·단어) ───────────────────────────────
+// 순수: 현재 found에 key 선택을 반영. result: already|correct|wrong|complete
+export function multiPickNext(foundArr, key, targetKeys) {
+  if (foundArr.includes(key)) return { found: foundArr, result: 'already' };
+  if (targetKeys.includes(key)) {
+    const found = [...foundArr, key];
+    return { found, result: found.length === targetKeys.length ? 'complete' : 'correct' };
+  }
+  return { found: foundArr, result: 'wrong' };
+}
+
+// 순수: 정답 키 전부 + distractor → 고유 보기 min(optionCount, pool)개(무한루프 없음).
+export function multiTargetOptions(targetKeys, optionCount, poolKeys) {
+  const need = Math.min(optionCount, poolKeys.length);
+  const distractors = shuffle(poolKeys.filter((k) => !targetKeys.includes(k)));
+  const picked = distractors.slice(0, Math.max(0, need - targetKeys.length));
+  return shuffle([...targetKeys, ...picked]);
+}
+
+// 멀티선택 훅 — found/wrongKey 상태 + ref 미러(빠른 연속 선택 stale 방지).
+export function useMultiPick() {
+  const [found, setFound] = useStateA([]);
+  const [wrongKey, setWrongKey] = useStateA(null);
+  const foundRef = useRefA([]);
+  const setF = (arr) => { foundRef.current = arr; setFound(arr); };
+  const reset = () => { setF([]); setWrongKey(null); };
+  const pick = (key, targetKeys) => {
+    const r = multiPickNext(foundRef.current, key, targetKeys);
+    if (r.result === 'wrong') {
+      setWrongKey(key);
+      setTimeout(() => setWrongKey((k) => (k === key ? null : k)), 650);
+    } else if (r.result !== 'already') {
+      setF(r.found);
+    }
+    return r.result;
+  };
+  return { found, wrongKey, pick, reset };
+}
+
+// 오답 ✗ / 정답 ✓ 배지 — 보기 버튼(position:relative) 우상단에 절대배치.
+export function PickMark({ kind }) {
+  const wrong = kind === 'wrong';
+  return (
+    <span aria-hidden style={{
+      position: 'absolute', top: 6, right: 8, width: 40, height: 40, borderRadius: 20,
+      background: wrong ? '#E5484D' : '#3BA55D', color: '#fff',
+      fontSize: 26, fontWeight: 900, lineHeight: '40px', textAlign: 'center',
+      boxShadow: '0 2px 6px rgba(0,0,0,0.3)', animation: 'kw-pop 0.3s ease both', pointerEvents: 'none',
+    }}>{wrong ? '✗' : '✓'}</span>
+  );
+}
+
 // 그림자 맞추기 — 실루엣 보고 원본 고르기
 const SHADOW_POOL = [
   '🐶','🐱','🐰','🦊','🐻','🐼','🦁','🐯','🐸','🐵',
   '🦒','🐘','🐧','🐢','🦋','🐟','🐝','🐞','🦄','🦖',
 ];
-// 그림자 레벨 — 0:보기4·6문제, 1:보기4·8문제, 2:보기6·10문제
+// 그림자 레벨 — 5단계, 멀티타깃 지원
 const SHADOW_LEVELS = [
-  { options: 4, questions: 6 },
-  { options: 4, questions: 8 },
-  { options: 6, questions: 10 },
+  { targets: 1, options: 4, questions: 6 },
+  { targets: 1, options: 4, questions: 8 },
+  { targets: 1, options: 6, questions: 10 },
+  { targets: 2, options: 6, questions: 8 },
+  { targets: 3, options: 8, questions: 10 },
 ];
 export function shadowLevelConfig(level) {
   const i = Math.max(0, Math.min(SHADOW_LEVELS.length - 1, level));
@@ -4056,186 +4107,134 @@ function ShadowActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
   const t = tone;
   const color = t.cat.brain;
   const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
-  const [levelIdx, setLevelIdx] = useStateA(0); // 항상 1레벨부터(진행 비저장)
+  const [levelIdx, setLevelIdx] = useStateA(0);
   const cfg = shadowLevelConfig(levelIdx);
   const TOTAL_Q = cfg.questions;
-  const OPTS = cfg.options;
 
   const newRound = () => {
     const pool = shuffle(SHADOW_POOL);
-    const target = pool[0];
-    const opts = shuffle([target, ...pool.slice(1, OPTS)]);
-    return { target, opts };
+    const targets = pool.slice(0, cfg.targets);
+    const opts = multiTargetOptions(targets, cfg.options, SHADOW_POOL);
+    return { targets, opts };
   };
-
   const [round, setRound] = useStateA(newRound);
-  const [status, setStatus] = useStateA('q');
-  const [picked, setPicked] = useStateA(null);
   const [progress, setProgress] = useStateA(0);
   const [done, setDone] = useStateA(false);
-
-  const onPick = (s) => {
-    if (status !== 'q' || done) return;
-    if (s === round.target) {
-      setStatus('right'); setPicked(s);
-      onComplete && onComplete(1);
-      const nextN = progress + 1;
-      setProgress(nextN);
-      setTimeout(() => {
-        if (nextN >= TOTAL_Q) {
-          setDone(true);
-          onComplete && onComplete(3);
-        } else {
-          setRound(newRound()); setStatus('q'); setPicked(null);
-        }
-      }, 950);
-    } else {
-      setStatus('wrong'); setPicked(s);
-      setTimeout(() => { setStatus('q'); setPicked(null); }, 650);
-    }
-  };
-
-  const restart = () => { setProgress(0); setDone(false); setStatus('q'); setPicked(null); setRound(newRound()); };
-
-  const nextLevel = () => {
-    if (levelIdx < SHADOW_LEVELS.length - 1) {
-      const next = levelIdx + 1;
-      setLevelIdx(next);
-    } else {
-      onFinish && onFinish();
-    }
-  };
-  const prevLevel = () => { if (levelIdx > 0) setLevelIdx(levelIdx - 1); };
+  const mp = useMultiPick();
+  const timersRef = useRefA([]);
+  const addTimer = (id) => timersRef.current.push(id);
+  useEffectA(() => () => { timersRef.current.forEach((id) => clearTimeout(id)); }, []);
 
   useEffectA(() => {
-    setProgress(0); setDone(false); setStatus('q'); setPicked(null); setRound(newRound());
+    timersRef.current.forEach((id) => clearTimeout(id));
+    timersRef.current = [];
+    setProgress(0); setDone(false); setRound(newRound()); mp.reset();
   }, [levelIdx]);
 
+  const onPick = (s) => {
+    if (done) return;
+    const r = mp.pick(s, round.targets);
+    if (r === 'wrong') playSfx('wrong');
+    else if (r === 'correct') playSfx('correct');
+    else if (r === 'complete') {
+      playSfx('correct');
+      onComplete && onComplete(1);
+      const nextN = progress + 1; setProgress(nextN);
+      addTimer(setTimeout(() => {
+        if (nextN >= TOTAL_Q) { setDone(true); onComplete && onComplete(3); }
+        else { setRound(newRound()); mp.reset(); }
+      }, 850));
+    }
+  };
+
+  const restart = () => { setProgress(0); setDone(false); setRound(newRound()); mp.reset(); };
+  const nextLevel = () => { if (levelIdx < SHADOW_LEVELS.length - 1) setLevelIdx(levelIdx + 1); else onFinish && onFinish(); };
+  const prevLevel = () => { if (levelIdx > 0) setLevelIdx(levelIdx - 1); };
+
+  const multi = cfg.targets > 1;
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', position: 'relative' }}>
       <div style={{ height: 88, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
         <div style={{ fontSize: fontSize + 14, fontWeight: 900, color: t.text, display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 36 }}>👤</span>
           그림자 맞추기
-          <span style={{
-            fontSize: fontSize - 2, fontWeight: 900,
-            background: t.accent, color: t.text,
-            padding: '4px 14px', borderRadius: 16,
-            border: t.outline === 'none' ? 'none' : t.outline,
-            marginLeft: 6,
-          }}>Lv.{levelIdx + 1}</span>
+          <span style={{ fontSize: fontSize - 2, fontWeight: 900, background: t.accent, color: t.text,
+            padding: '4px 14px', borderRadius: 16, border: t.outline === 'none' ? 'none' : t.outline, marginLeft: 6 }}>Lv.{levelIdx + 1}</span>
         </div>
         <LevelStepper tone={t} cur={levelIdx} total={SHADOW_LEVELS.length} onPrev={prevLevel} onNext={nextLevel} />
       </div>
 
       {!done ? (
         <React.Fragment>
-          {/* 실루엣 카드 */}
           <div style={{ flex: 1, padding: '0 32px', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0 }}>
-            <div style={{
-              width: '100%', maxWidth: 620, height: '100%',
-              background: color,
-              border: t.outline === 'none' ? 'none' : t.outline,
-              borderRadius: t.cardRadius + 8,
-              padding: '24px 28px',
-              boxShadow: t.shadow,
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              gap: 16,
-              transform: status === 'wrong' ? 'translateX(-6px)' : 'translateX(0)',
-              transition: 'transform 0.08s',
-              boxSizing: 'border-box',
-            }}>
-              <div style={{
-                fontSize: fontSize, fontWeight: 900, color: t.textOnColor,
-                background: 'rgba(0,0,0,0.18)', padding: '6px 16px', borderRadius: 16,
-              }}>이 그림자는 누구일까?</div>
-              <div key={round.target} style={{
-                fontSize: 200, lineHeight: 1,
-                filter: status === 'right' ? 'none' : 'brightness(0) drop-shadow(0 6px 0 rgba(0,0,0,0.18))',
-                animation: 'kw-pop 0.5s cubic-bezier(.34,1.56,.64,1) both',
-                transition: 'filter 0.4s ease',
-              }}>{round.target}</div>
+            <div style={{ width: '100%', maxWidth: 720, height: '100%', background: color, border: t.outline === 'none' ? 'none' : t.outline,
+              borderRadius: t.cardRadius + 8, padding: '20px 24px', boxShadow: t.shadow, display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center', gap: 14, boxSizing: 'border-box' }}>
+              <div style={{ fontSize: fontSize, fontWeight: 900, color: t.textOnColor, background: 'rgba(0,0,0,0.18)', padding: '6px 16px', borderRadius: 16 }}>
+                {multi ? `이 그림자 ${cfg.targets}개를 모두 찾아봐` : '이 그림자는 누구일까?'}
+              </div>
+              <div style={{ display: 'flex', gap: 24, alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
+                {round.targets.map((tg) => {
+                  const got = mp.found.includes(tg);
+                  return (
+                    <div key={tg} style={{ fontSize: multi ? 130 : 190, lineHeight: 1,
+                      filter: got ? 'none' : 'brightness(0) drop-shadow(0 6px 0 rgba(0,0,0,0.18))', transition: 'filter 0.3s ease' }}>{tg}</div>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
-          {/* 4지선다 */}
-          <div style={{ flex: '0 0 auto', padding: '14px 32px 4px', display: 'grid', gridTemplateColumns: `repeat(${OPTS}, 1fr)`, gap: 14 }}>
+          <div style={{ flex: '0 0 auto', padding: '14px 32px 4px', display: 'grid', gridTemplateColumns: `repeat(${cfg.options}, 1fr)`, gap: 14 }}>
             {round.opts.map((s, i) => {
-              const isRight = status === 'right' && s === round.target;
-              const isWrong = status === 'wrong' && picked === s;
+              const isRight = mp.found.includes(s);
+              const isWrong = mp.wrongKey === s;
               return (
-                <button key={i} onClick={() => onPick(s)}
-                  onPointerDown={(e) => e.currentTarget.animate([{transform:'scale(1)'},{transform:'scale(0.92)'}],{duration:130})}
-                  style={{
-                    height: 96, fontSize: 60,
+                <button key={i} onClick={() => onPick(s)} disabled={isRight}
+                  onPointerDown={(e) => !isRight && e.currentTarget.animate([{transform:'scale(1)'},{transform:'scale(0.92)'}],{duration:130})}
+                  style={{ position: 'relative', height: 92, fontSize: 54,
                     background: isRight ? t.cat.code : isWrong ? t.cat.shape : '#fff',
-                    border: t.outline === 'none' ? `4px solid ${t.text}` : t.outline,
-                    borderRadius: t.cardRadius,
-                    cursor: 'pointer', fontFamily: 'inherit',
-                    boxShadow: t.shadow,
-                    transition: 'background 0.2s',
-                  }}>{s}</button>
+                    border: t.outline === 'none' ? `4px solid ${t.text}` : t.outline, borderRadius: t.cardRadius,
+                    cursor: isRight ? 'default' : 'pointer', fontFamily: 'inherit', boxShadow: t.shadow,
+                    animation: isWrong ? 'kw-shake 0.4s ease' : 'none', transition: 'background 0.2s' }}>
+                  {s}
+                  {isRight && <PickMark kind="right" />}
+                  {isWrong && <PickMark kind="wrong" />}
+                </button>
               );
             })}
           </div>
 
           <div style={{ flex: '0 0 auto', padding: '12px 32px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ flex: 1, display: 'flex', gap: 10, alignItems: 'center' }}>
-              {Array.from({ length: TOTAL_Q }).map((_, i) => {
-                const filled = i < progress;
-                return (
-                  <span key={i} style={{
-                    width: 22, height: 22, borderRadius: 11,
-                    background: filled ? color : '#fff',
-                    border: filled ? (t.outline === 'none' ? 'none' : `2px solid ${t.text}`) : `2px solid rgba(0,0,0,0.18)`,
-                    boxShadow: filled ? t.shadowSm : 'none',
-                    transition: 'all 0.25s ease',
-                    display: 'inline-block',
-                  }} />
-                );
-              })}
+            <div style={{ flex: 1, display: 'flex', gap: 10 }}>
+              {Array.from({ length: TOTAL_Q }).map((_, i) => (
+                <span key={i} style={{ width: 22, height: 22, borderRadius: 11, background: i < progress ? color : '#fff',
+                  border: i < progress ? (t.outline === 'none' ? 'none' : `2px solid ${t.text}`) : `2px solid rgba(0,0,0,0.18)` }} />
+              ))}
             </div>
-            <div style={{ fontSize: fontSize, fontWeight: 900, color: t.text, fontVariantNumeric: 'tabular-nums', minWidth: 70, textAlign: 'right' }}>
-              {progress}/{TOTAL_Q}
-            </div>
+            <div style={{ fontSize: fontSize, fontWeight: 900, color: t.text, minWidth: 70, textAlign: 'right' }}>{progress}/{TOTAL_Q}</div>
           </div>
         </React.Fragment>
       ) : (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, padding: '0 32px 24px' }}>
-          <div style={{ fontSize: 160, lineHeight: 1, animation: 'kw-pop 0.6s cubic-bezier(.34,1.56,.64,1) both' }}>🎉</div>
+          <div style={{ fontSize: 160, animation: 'kw-pop 0.6s cubic-bezier(.34,1.56,.64,1) both' }}>🎉</div>
           <div style={{ fontSize: fontSize + 28, fontWeight: 900, color: t.text }}>그림자 다 맞췄어!</div>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            background: '#fff', border: accentBorder, borderRadius: 999,
-            padding: '10px 22px', boxShadow: t.shadowSm,
-            fontSize: fontSize + 4, fontWeight: 900, color: t.text,
-          }}>
-            <span style={{ fontSize: 36 }}>⭐</span>
-            {TOTAL_Q + 3}개 별 획득!
-          </div>
           <div style={{ display: 'flex', gap: 14, marginTop: 8 }}>
             <button onClick={restart}
               onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.94)' }], { duration: 140 })}
-              style={{
-                background: '#fff', color: t.text, border: accentBorder, borderRadius: 32, padding: '18px 30px',
-                fontSize: fontSize + 4, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadowSm,
-              }}>🔄 다시 풀기</button>
+              style={{ background: '#fff', color: t.text, border: accentBorder, borderRadius: 32, padding: '18px 30px',
+                fontSize: fontSize + 4, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadowSm }}>🔄 다시 풀기</button>
             <button onClick={nextLevel}
               onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.94)' }], { duration: 140 })}
-              style={{
-                background: color, color: t.textOnColor, border: t.outline === 'none' ? 'none' : t.outline,
-                borderRadius: 32, padding: '18px 36px', fontSize: fontSize + 6, fontWeight: 900,
-                cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadow,
-                display: 'inline-flex', alignItems: 'center', gap: 10,
-              }}>{levelIdx < SHADOW_LEVELS.length - 1 ? '다음 레벨 ▶' : '끝내기 🎀'}</button>
+              style={{ background: color, color: t.textOnColor, border: t.outline === 'none' ? 'none' : t.outline, borderRadius: 32,
+                padding: '18px 36px', fontSize: fontSize + 6, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadow,
+                display: 'inline-flex', alignItems: 'center', gap: 10 }}>{levelIdx < SHADOW_LEVELS.length - 1 ? '다음 레벨 ▶' : '끝내기 🎀'}</button>
           </div>
         </div>
       )}
 
-      <VoiceGuide tone={t}
-        show={voiceShow}
-        text={done ? '잘했어!' : status === 'right' ? '맞아!' : '이 그림자는 누구일까?'}
-        fontSize={fontSize - 4} />
+      <VoiceGuide tone={t} show={voiceShow}
+        text={done ? '잘했어!' : multi ? `그림자 ${cfg.targets}개를 모두 찾아봐` : '이 그림자는 누구일까?'} fontSize={fontSize - 4} />
     </div>
   );
 }
@@ -4243,14 +4242,17 @@ function ShadowActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
 function MemoryActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow }) {
   const t = tone;
   const color = t.cat.brain;
-  const [levelIdx, setLevelIdx] = useStateA(0); // 항상 1레벨부터(진행 비저장)
+  const [levelIdx, setLevelIdx] = useStateA(0);
   const cfg = memoryLevelConfig(levelIdx);
-  const PAIRS = cfg.pairs;
+  const GROUP = cfg.group;
+  const COUNT = cfg.count;
   const COLS = cfg.cols;
 
   const buildDeck = () => {
-    const picked = shuffle(MEMORY_EMOJI).slice(0, PAIRS);
-    return shuffle([...picked, ...picked]).map((e, i) => ({ id: i, e, matched: false }));
+    const picked = shuffle(MEMORY_EMOJI).slice(0, COUNT);
+    const all = [];
+    picked.forEach((e) => { for (let g = 0; g < GROUP; g++) all.push(e); });
+    return shuffle(all).map((e, i) => ({ id: i, e, matched: false }));
   };
   const [cards, setCards] = useStateA(buildDeck);
   const [flipped, setFlipped] = useStateA([]);
@@ -4258,48 +4260,56 @@ function MemoryActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow
   const [attempts, setAttempts] = useStateA(0);
   const [missFlash, setMissFlash] = useStateA(null);
   const [cleared, setCleared] = useStateA(false);
-  const pairsFound = cards.filter((c) => c.matched).length / 2;
-  const allMatched = pairsFound === PAIRS;
+  const [previewing, setPreviewing] = useStateA(true);
+  const groupsFound = cards.filter((c) => c.matched).length / GROUP;
+  const allMatched = COUNT > 0 && groupsFound === COUNT;
   const wonRef = useRefA(false);
+  const timersRef = useRefA([]);
+  const addTimer = (id) => timersRef.current.push(id);
+  useEffectA(() => () => { timersRef.current.forEach((id) => clearTimeout(id)); }, []);
+
+  const startPreview = () => {
+    timersRef.current.forEach((id) => clearTimeout(id));
+    timersRef.current = [];
+    setPreviewing(true); setLocked(true);
+    addTimer(setTimeout(() => { setPreviewing(false); setLocked(false); }, 1500));
+  };
 
   useEffectA(() => {
     if (allMatched && !wonRef.current) {
       wonRef.current = true;
       onComplete && onComplete(3);
-      setTimeout(() => setCleared(true), 700);
+      addTimer(setTimeout(() => setCleared(true), 700));
     }
   }, [allMatched]);
 
   useEffectA(() => {
     wonRef.current = false;
     setCards(buildDeck());
-    setFlipped([]); setLocked(false); setAttempts(0); setMissFlash(null); setCleared(false);
+    setFlipped([]); setAttempts(0); setMissFlash(null); setCleared(false);
+    startPreview();
   }, [levelIdx]);
 
   const onFlip = (i) => {
-    if (locked) return;
+    if (locked || previewing) return;
     if (cards[i].matched) return;
     if (flipped.includes(i)) return;
     const nf = [...flipped, i];
     setFlipped(nf);
-    if (nf.length === 2) {
+    if (nf.length === GROUP) {
       setLocked(true);
       setAttempts((a) => a + 1);
-      const [a, b] = nf;
-      if (cards[a].e === cards[b].e) {
-        // 정답
+      const allSame = nf.every((idx) => cards[idx].e === cards[nf[0]].e);
+      if (allSame) {
         playSfx('correct');
-        setTimeout(() => {
-          setCards((cs) => cs.map((c, idx) => (idx === a || idx === b) ? { ...c, matched: true } : c));
+        addTimer(setTimeout(() => {
+          setCards((cs) => cs.map((c, idx) => nf.includes(idx) ? { ...c, matched: true } : c));
           setFlipped([]); setLocked(false);
-        }, 650);
+        }, 650));
       } else {
-        // 오답 — 흔들리고 뒤집기
         playSfx('wrong');
-        setMissFlash([a, b]);
-        setTimeout(() => {
-          setFlipped([]); setLocked(false); setMissFlash(null);
-        }, 1000);
+        setMissFlash(nf);
+        addTimer(setTimeout(() => { setFlipped([]); setLocked(false); setMissFlash(null); }, 1000));
       }
     }
   };
@@ -4308,141 +4318,65 @@ function MemoryActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow
     wonRef.current = false;
     setCards(buildDeck());
     setFlipped([]); setLocked(false); setAttempts(0); setMissFlash(null); setCleared(false);
+    startPreview();
   };
-
-  const nextLevel = () => {
-    if (levelIdx < MEMORY_LEVELS.length - 1) setLevelIdx(levelIdx + 1);
-    else onFinish && onFinish();
-  };
+  const nextLevel = () => { if (levelIdx < MEMORY_LEVELS.length - 1) setLevelIdx(levelIdx + 1); else onFinish && onFinish(); };
   const prevLevel = () => { if (levelIdx > 0) setLevelIdx(levelIdx - 1); };
 
   const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', position: 'relative' }}>
-      {/* ─ 타이틀 ─ */}
       <div style={{ height: 88, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
         <div style={{ fontSize: fontSize + 14, fontWeight: 900, color: t.text, display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 36 }}>🃏</span>
           카드 뒤집기
-          <span style={{
-            fontSize: fontSize - 2, fontWeight: 900,
-            background: t.accent, color: t.text,
-            padding: '4px 14px', borderRadius: 16,
-            border: t.outline === 'none' ? 'none' : t.outline,
-            marginLeft: 6,
-          }}>Lv.{levelIdx + 1}</span>
+          <span style={{ fontSize: fontSize - 2, fontWeight: 900, background: t.accent, color: t.text,
+            padding: '4px 14px', borderRadius: 16, border: t.outline === 'none' ? 'none' : t.outline, marginLeft: 6 }}>
+            Lv.{levelIdx + 1}{GROUP === 3 ? ' · 3장' : ''}
+          </span>
         </div>
         <LevelStepper tone={t} cur={levelIdx} total={MEMORY_LEVELS.length} onPrev={prevLevel} onNext={nextLevel} />
       </div>
 
-      {/* ─ 정보바 ─ */}
-      <div style={{
-        flex: '0 0 auto',
-        padding: '0 28px 10px',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14,
-      }}>
-        <div style={{
-          background: '#fff', borderRadius: 999,
-          padding: '8px 20px',
-          border: accentBorder,
-          fontSize: fontSize, fontWeight: 900, color: t.text,
-          boxShadow: t.shadowSm,
-          display: 'flex', alignItems: 'center', gap: 8,
-          fontVariantNumeric: 'tabular-nums',
-        }}>
-          <span style={{ fontSize: 24, lineHeight: 1 }}>🎯</span>
-          시도 횟수 <span style={{ color: color }}>{attempts}</span>
+      <div style={{ flex: '0 0 auto', padding: '0 28px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14 }}>
+        <div style={{ background: '#fff', borderRadius: 999, padding: '8px 20px', border: accentBorder,
+          fontSize: fontSize, fontWeight: 900, color: t.text, boxShadow: t.shadowSm, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 24 }}>🎯</span> 시도 <span style={{ color }}>{attempts}</span>
         </div>
-        <div style={{
-          background: '#fff', borderRadius: 999,
-          padding: '8px 20px',
-          border: accentBorder,
-          fontSize: fontSize, fontWeight: 900, color: t.text,
-          boxShadow: t.shadowSm,
-          display: 'flex', alignItems: 'center', gap: 8,
-          fontVariantNumeric: 'tabular-nums',
-        }}>
-          <span style={{ fontSize: 24, lineHeight: 1 }}>💑</span>
-          짝 찾기 <span style={{ color: color }}>{pairsFound}/{PAIRS}</span>
+        <div style={{ background: '#fff', borderRadius: 999, padding: '8px 20px', border: accentBorder,
+          fontSize: fontSize, fontWeight: 900, color: t.text, boxShadow: t.shadowSm, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 24 }}>💑</span> 찾기 <span style={{ color }}>{groupsFound}/{COUNT}</span>
         </div>
         <button onClick={restart}
           onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.94)' }], { duration: 130 })}
-          style={{
-            background: t.accent, color: t.text,
-            border: t.outline === 'none' ? 'none' : t.outline,
-            borderRadius: 999,
-            padding: '8px 18px',
-            fontSize: fontSize - 2, fontWeight: 900,
-            cursor: 'pointer', fontFamily: 'inherit',
-            boxShadow: t.shadowSm,
-          }}>🔄 새 게임</button>
+          style={{ background: t.accent, color: t.text, border: t.outline === 'none' ? 'none' : t.outline,
+            borderRadius: 999, padding: '8px 18px', fontSize: fontSize - 2, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadowSm }}>🔄 새 게임</button>
       </div>
 
-      {/* ─ 카드 그리드 (4×3) ─ */}
-      <div style={{
-        flex: 1, padding: '0 28px 8px',
-        display: 'grid',
-        gridTemplateColumns: `repeat(${COLS}, 1fr)`,
-        gridTemplateRows: `repeat(${Math.ceil(cards.length / COLS)}, 1fr)`,
-        gap: 16,
-        minHeight: 0,
-      }}>
+      <div style={{ flex: 1, padding: '0 28px 8px', display: 'grid', gridTemplateColumns: `repeat(${COLS}, 1fr)`,
+        gridTemplateRows: `repeat(${Math.ceil(cards.length / COLS)}, 1fr)`, gap: 14, minHeight: 0 }}>
         {cards.map((c, i) => {
-          const open = flipped.includes(i) || c.matched;
+          const open = previewing || flipped.includes(i) || c.matched;
           const isMissing = missFlash && missFlash.includes(i);
           return (
             <div key={c.id} onClick={() => onFlip(i)}
-              style={{
-                perspective: 1000,
-                cursor: c.matched ? 'default' : 'pointer',
-                animation: isMissing ? 'kw-shake 0.5s ease' : 'none',
-              }}>
-              <div style={{
-                position: 'relative',
-                width: '100%', height: '100%',
-                transformStyle: 'preserve-3d',
-                transform: open ? 'rotateY(180deg)' : 'rotateY(0)',
-                transition: 'transform 0.55s cubic-bezier(.34,1.2,.4,1)',
-              }}>
-                {/* 뒷면 ❓ */}
-                <div style={{
-                  position: 'absolute', inset: 0,
-                  background: color,
-                  border: t.outline === 'none' ? 'none' : t.outline,
-                  borderRadius: t.cardRadius,
-                  backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 80, lineHeight: 1, color: t.textOnColor, fontWeight: 900,
-                  boxShadow: t.shadow,
-                  backgroundImage: t.id === 'C' ? 'none' : `radial-gradient(circle at 30% 30%, rgba(255,255,255,0.32), transparent 60%)`,
-                }}>
-                  <span style={{
-                    fontSize: 60, opacity: 0.9,
-                    textShadow: '0 3px 0 rgba(0,0,0,0.18)',
-                  }}>❓</span>
+              style={{ perspective: 1000, cursor: c.matched ? 'default' : 'pointer', animation: isMissing ? 'kw-shake 0.5s ease' : 'none' }}>
+              <div style={{ position: 'relative', width: '100%', height: '100%', transformStyle: 'preserve-3d',
+                transform: open ? 'rotateY(180deg)' : 'rotateY(0)', transition: 'transform 0.5s cubic-bezier(.34,1.2,.4,1)' }}>
+                <div style={{ position: 'absolute', inset: 0, background: color, border: t.outline === 'none' ? 'none' : t.outline,
+                  borderRadius: t.cardRadius, backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.textOnColor, boxShadow: t.shadow,
+                  backgroundImage: t.id === 'C' ? 'none' : `radial-gradient(circle at 30% 30%, rgba(255,255,255,0.32), transparent 60%)` }}>
+                  <span style={{ fontSize: 52, opacity: 0.9, textShadow: '0 3px 0 rgba(0,0,0,0.18)' }}>❓</span>
                 </div>
-                {/* 앞면 (정답 그림) */}
-                <div style={{
-                  position: 'absolute', inset: 0,
-                  background: '#fff',
-                  border: c.matched ? `4px solid ${t.cat.code}` : accentBorder,
-                  borderRadius: t.cardRadius,
-                  backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden',
-                  transform: 'rotateY(180deg)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 88, lineHeight: 1,
-                  boxShadow: c.matched ? `0 0 0 4px ${t.cat.code}33, ${t.shadowSm}` : t.shadowSm,
-                  opacity: c.matched ? 0.92 : 1,
-                }}>
+                <div style={{ position: 'absolute', inset: 0, background: '#fff',
+                  border: c.matched ? `4px solid ${t.cat.code}` : accentBorder, borderRadius: t.cardRadius,
+                  backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', transform: 'rotateY(180deg)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 72, lineHeight: 1,
+                  boxShadow: c.matched ? `0 0 0 4px ${t.cat.code}33, ${t.shadowSm}` : t.shadowSm, opacity: c.matched ? 0.92 : 1 }}>
                   <span>{c.e}</span>
-                  {c.matched && (
-                    <span style={{
-                      position: 'absolute', top: 8, right: 10,
-                      fontSize: 28, lineHeight: 1,
-                      animation: 'kw-pop 0.4s ease both',
-                    }}>✅</span>
-                  )}
+                  {c.matched && <span style={{ position: 'absolute', top: 8, right: 10, fontSize: 26, animation: 'kw-pop 0.4s ease both' }}>✅</span>}
                 </div>
               </div>
             </div>
@@ -4450,35 +4384,34 @@ function MemoryActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow
         })}
       </div>
 
+      {previewing && (
+        <div style={{ position: 'absolute', top: 92, left: '50%', transform: 'translateX(-50%)', zIndex: 40,
+          background: t.accent, color: t.text, padding: '6px 18px', borderRadius: 999, fontSize: fontSize, fontWeight: 900,
+          boxShadow: t.shadowSm, pointerEvents: 'none' }}>👀 잘 봐둬!</div>
+      )}
+
       {cleared && (
-        <div style={{
-          position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, zIndex: 60,
-        }}>
-          <div style={{ fontSize: 120, lineHeight: 1, animation: 'kw-pop 0.6s cubic-bezier(.34,1.56,.64,1) both' }}>🎉</div>
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center', gap: 18, zIndex: 60 }}>
+          <div style={{ fontSize: 120, animation: 'kw-pop 0.6s cubic-bezier(.34,1.56,.64,1) both' }}>🎉</div>
           <div style={{ fontSize: fontSize + 24, fontWeight: 900, color: '#fff' }}>
             {levelIdx < MEMORY_LEVELS.length - 1 ? `Lv.${levelIdx + 1} 성공!` : '모든 레벨 성공!'}
           </div>
           <div style={{ display: 'flex', gap: 14 }}>
-            <button onClick={restart}
-              style={{
-                background: '#fff', color: t.text, border: 'none', borderRadius: 28, padding: '16px 28px',
-                fontSize: fontSize + 2, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadow,
-              }}>🔄 다시</button>
+            <button onClick={restart} style={{ background: '#fff', color: t.text, border: 'none', borderRadius: 28,
+              padding: '16px 28px', fontSize: fontSize + 2, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadow }}>🔄 다시</button>
             <button onClick={nextLevel}
               onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.94)' }], { duration: 140 })}
-              style={{
-                background: color, color: t.textOnColor, border: t.outline === 'none' ? 'none' : t.outline,
-                borderRadius: 28, padding: '16px 30px', fontSize: fontSize + 2, fontWeight: 900,
-                cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadow,
-              }}>{levelIdx < MEMORY_LEVELS.length - 1 ? '다음 레벨 ▶' : '끝내기 🎀'}</button>
+              style={{ background: color, color: t.textOnColor, border: t.outline === 'none' ? 'none' : t.outline, borderRadius: 28,
+                padding: '16px 30px', fontSize: fontSize + 2, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadow }}>
+              {levelIdx < MEMORY_LEVELS.length - 1 ? '다음 레벨 ▶' : '끝내기 🎀'}
+            </button>
           </div>
         </div>
       )}
 
-      <VoiceGuide tone={t}
-        show={voiceShow}
-        text={allMatched ? '와! 다 맞췄어!' : flipped.length === 2 ? '같은 그림일까?' : '같은 짝을 찾아봐'}
+      <VoiceGuide tone={t} show={voiceShow}
+        text={previewing ? '카드를 잘 봐둬!' : allMatched ? '와! 다 맞췄어!' : GROUP === 3 ? '같은 그림 3장을 찾아봐' : '같은 짝을 찾아봐'}
         fontSize={fontSize - 4} />
     </div>
   );

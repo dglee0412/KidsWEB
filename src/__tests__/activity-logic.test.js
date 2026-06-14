@@ -57,25 +57,23 @@ describe('nextFollowState', () => {
   })
 })
 
-describe('memoryLevelConfig', () => {
-  it('Lv1=6쌍 4열, Lv2=8쌍 4열, Lv3=10쌍 5열', () => {
-    expect(memoryLevelConfig(0)).toEqual({ pairs: 6, cols: 4 })
-    expect(memoryLevelConfig(1)).toEqual({ pairs: 8, cols: 4 })
-    expect(memoryLevelConfig(2)).toEqual({ pairs: 10, cols: 5 })
-  })
-  it('범위를 벗어나면 마지막 레벨로 클램프', () => {
-    expect(memoryLevelConfig(9)).toEqual({ pairs: 10, cols: 5 })
+describe('memoryLevelConfig(5레벨)', () => {
+  it('레벨별 group/count/cols', () => {
+    expect(memoryLevelConfig(0)).toEqual({ group: 2, count: 6,  cols: 4 })
+    expect(memoryLevelConfig(3)).toEqual({ group: 3, count: 4,  cols: 4 })
+    expect(memoryLevelConfig(4)).toEqual({ group: 3, count: 6,  cols: 6 })
+    expect(memoryLevelConfig(9)).toEqual({ group: 3, count: 6,  cols: 6 })
   })
 })
 
 describe('shadowLevelConfig', () => {
   it('레벨별 보기수/문제수', () => {
-    expect(shadowLevelConfig(0)).toEqual({ options: 4, questions: 6 })
-    expect(shadowLevelConfig(1)).toEqual({ options: 4, questions: 8 })
-    expect(shadowLevelConfig(2)).toEqual({ options: 6, questions: 10 })
+    expect(shadowLevelConfig(0)).toEqual({ targets: 1, options: 4, questions: 6 })
+    expect(shadowLevelConfig(1)).toEqual({ targets: 1, options: 4, questions: 8 })
+    expect(shadowLevelConfig(2)).toEqual({ targets: 1, options: 6, questions: 10 })
   })
   it('범위를 벗어나면 마지막 레벨로 클램프', () => {
-    expect(shadowLevelConfig(5)).toEqual({ options: 6, questions: 10 })
+    expect(shadowLevelConfig(9)).toEqual({ targets: 3, options: 8, questions: 10 })
   })
 })
 
@@ -93,6 +91,59 @@ describe('mathOptions', () => {
           expect(o).toBeLessThanOrEqual(maxN)
         }
       }
+    }
+  })
+})
+
+import { multiPickNext, multiTargetOptions } from '../activities.jsx'
+
+describe('multiPickNext', () => {
+  it('맞는 키 첫 선택 → correct', () => {
+    expect(multiPickNext([], 'a', ['a','b'])).toEqual({ found: ['a'], result: 'correct' })
+  })
+  it('마지막 타깃 선택 → complete', () => {
+    expect(multiPickNext(['a'], 'b', ['a','b'])).toEqual({ found: ['a','b'], result: 'complete' })
+  })
+  it('이미 고른 키 → already(변화 없음)', () => {
+    expect(multiPickNext(['a'], 'a', ['a','b'])).toEqual({ found: ['a'], result: 'already' })
+  })
+  it('틀린 키 → wrong(변화 없음)', () => {
+    expect(multiPickNext(['a'], 'z', ['a','b'])).toEqual({ found: ['a'], result: 'wrong' })
+  })
+})
+
+describe('multiTargetOptions', () => {
+  const distinct = (a) => new Set(a).size === a.length
+  const pool = ['a','b','c','d','e','f','g','h']
+  it('정답 전부 포함 + 고유 + 길이=min(optionCount,pool)', () => {
+    for (const targets of [['a'], ['a','b'], ['a','b','c']]) {
+      for (const oc of [4, 6, 8]) {
+        const r = multiTargetOptions(targets, oc, pool)
+        expect(r).toHaveLength(Math.min(oc, pool.length))
+        expect(distinct(r)).toBe(true)
+        for (const tk of targets) expect(r).toContain(tk)
+      }
+    }
+  })
+})
+
+import { hangulWordLevelConfig } from '../activities.jsx'
+
+describe('shadowLevelConfig(5레벨)', () => {
+  it('상위 레벨 멀티타깃', () => {
+    expect(shadowLevelConfig(0)).toEqual({ targets: 1, options: 4, questions: 6 })
+    expect(shadowLevelConfig(3)).toEqual({ targets: 2, options: 6, questions: 8 })
+    expect(shadowLevelConfig(4)).toEqual({ targets: 3, options: 8, questions: 10 })
+  })
+})
+describe('hangulWordLevelConfig(5레벨, 풀 클램프)', () => {
+  it('targets/options/questions, options는 풀 크기 이하', () => {
+    const c0 = hangulWordLevelConfig(0)
+    expect(c0.targets).toBe(1)
+    expect(c0.questions).toBe(8)
+    for (let lv = 0; lv < 5; lv++) {
+      const c = hangulWordLevelConfig(lv)
+      expect(c.options).toBeGreaterThanOrEqual(c.targets + 1)
     }
   })
 })
