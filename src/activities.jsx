@@ -1437,28 +1437,41 @@ const VOWELS = [
   { ch: 'ㅣ', name: '이', word: '이불',  emoji: '🛏️' },
 ];
 
+export const WORD_THEMES = [
+  { id: 'animal',  name: '동물' },
+  { id: 'food',    name: '음식' },
+  { id: 'vehicle', name: '탈것' },
+  { id: 'nature',  name: '자연' },
+  { id: 'object',  name: '사물' },
+];
+
+// 주제별 단어 필터(순수). theme==='all'이면 전체.
+export function wordsByTheme(words, theme) {
+  return theme === 'all' ? words : words.filter((w) => w.theme === theme);
+}
+
 // 한글 낱말 풀 — 그림 보고 단어 맞추기
-const HANGUL_WORDS = [
-  { word: '사과',   emoji: '🍎' },
-  { word: '바나나', emoji: '🍌' },
-  { word: '포도',   emoji: '🍇' },
-  { word: '딸기',   emoji: '🍓' },
-  { word: '나비',   emoji: '🦋' },
-  { word: '오리',   emoji: '🦆' },
-  { word: '토끼',   emoji: '🐰' },
-  { word: '코끼리', emoji: '🐘' },
-  { word: '기린',   emoji: '🦒' },
-  { word: '여우',   emoji: '🦊' },
-  { word: '강아지', emoji: '🐶' },
-  { word: '고양이', emoji: '🐱' },
-  { word: '치즈',   emoji: '🧀' },
-  { word: '우유',   emoji: '🥛' },
-  { word: '자전거', emoji: '🚲' },
-  { word: '자동차', emoji: '🚗' },
-  { word: '비행기', emoji: '✈️' },
-  { word: '배',     emoji: '🚢' },
-  { word: '꽃',     emoji: '🌸' },
-  { word: '별',     emoji: '⭐' },
+export const HANGUL_WORDS = [
+  { word: '고양이', emoji: '🐱', theme: 'animal' }, { word: '강아지', emoji: '🐶', theme: 'animal' },
+  { word: '여우',   emoji: '🦊', theme: 'animal' }, { word: '사자',   emoji: '🦁', theme: 'animal' },
+  { word: '곰',     emoji: '🐻', theme: 'animal' }, { word: '토끼',   emoji: '🐰', theme: 'animal' },
+  { word: '돼지',   emoji: '🐷', theme: 'animal' }, { word: '개구리', emoji: '🐸', theme: 'animal' },
+  { word: '사과',   emoji: '🍎', theme: 'food' },   { word: '바나나', emoji: '🍌', theme: 'food' },
+  { word: '포도',   emoji: '🍇', theme: 'food' },   { word: '달걀',   emoji: '🥚', theme: 'food' },
+  { word: '빵',     emoji: '🍞', theme: 'food' },   { word: '케이크', emoji: '🍰', theme: 'food' },
+  { word: '우유',   emoji: '🥛', theme: 'food' },   { word: '옥수수', emoji: '🌽', theme: 'food' },
+  { word: '자동차', emoji: '🚗', theme: 'vehicle' },{ word: '버스',   emoji: '🚌', theme: 'vehicle' },
+  { word: '기차',   emoji: '🚂', theme: 'vehicle' },{ word: '비행기', emoji: '✈️', theme: 'vehicle' },
+  { word: '배',     emoji: '🚢', theme: 'vehicle' },{ word: '자전거', emoji: '🚲', theme: 'vehicle' },
+  { word: '트럭',   emoji: '🚚', theme: 'vehicle' },{ word: '택시',   emoji: '🚕', theme: 'vehicle' },
+  { word: '해',     emoji: '☀️', theme: 'nature' }, { word: '달',     emoji: '🌙', theme: 'nature' },
+  { word: '별',     emoji: '⭐', theme: 'nature' }, { word: '나무',   emoji: '🌳', theme: 'nature' },
+  { word: '꽃',     emoji: '🌸', theme: 'nature' }, { word: '비',     emoji: '🌧️', theme: 'nature' },
+  { word: '구름',   emoji: '☁️', theme: 'nature' }, { word: '눈',     emoji: '❄️', theme: 'nature' },
+  { word: '모자',   emoji: '🎩', theme: 'object' }, { word: '컵',     emoji: '🥤', theme: 'object' },
+  { word: '공',     emoji: '⚽', theme: 'object' }, { word: '책',     emoji: '📖', theme: 'object' },
+  { word: '시계',   emoji: '🕐', theme: 'object' }, { word: '열쇠',   emoji: '🔑', theme: 'object' },
+  { word: '선물',   emoji: '🎁', theme: 'object' }, { word: '우산',   emoji: '☂️', theme: 'object' },
 ];
 
 const HANGUL_WORD_LEVELS = [

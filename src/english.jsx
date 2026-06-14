@@ -36,13 +36,28 @@ export const ALPHABET = [
   { u: 'Z', l: 'z', word: 'Zebra',     emoji: '🦓' },
 ];
 
-// 단어 맞추기(일상 혼합)
+// 단어 맞추기 — 주제별 40단어
 export const WORD_SET = [
-  { word: 'cat',   emoji: '🐱' }, { word: 'dog',  emoji: '🐶' }, { word: 'sun',   emoji: '☀️' },
-  { word: 'bus',   emoji: '🚌' }, { word: 'cup',  emoji: '🥤' }, { word: 'hat',   emoji: '🎩' },
-  { word: 'egg',   emoji: '🥚' }, { word: 'fish', emoji: '🐟' }, { word: 'star',  emoji: '⭐' },
-  { word: 'moon',  emoji: '🌙' }, { word: 'tree', emoji: '🌳' }, { word: 'car',   emoji: '🚗' },
-  { word: 'apple', emoji: '🍎' }, { word: 'ball', emoji: '⚽' },
+  { word: 'cat', emoji: '🐱', theme: 'animal' }, { word: 'dog', emoji: '🐶', theme: 'animal' },
+  { word: 'fox', emoji: '🦊', theme: 'animal' }, { word: 'lion', emoji: '🦁', theme: 'animal' },
+  { word: 'bear', emoji: '🐻', theme: 'animal' }, { word: 'rabbit', emoji: '🐰', theme: 'animal' },
+  { word: 'pig', emoji: '🐷', theme: 'animal' }, { word: 'frog', emoji: '🐸', theme: 'animal' },
+  { word: 'apple', emoji: '🍎', theme: 'food' }, { word: 'banana', emoji: '🍌', theme: 'food' },
+  { word: 'grape', emoji: '🍇', theme: 'food' }, { word: 'egg', emoji: '🥚', theme: 'food' },
+  { word: 'bread', emoji: '🍞', theme: 'food' }, { word: 'cake', emoji: '🍰', theme: 'food' },
+  { word: 'milk', emoji: '🥛', theme: 'food' }, { word: 'corn', emoji: '🌽', theme: 'food' },
+  { word: 'car', emoji: '🚗', theme: 'vehicle' }, { word: 'bus', emoji: '🚌', theme: 'vehicle' },
+  { word: 'train', emoji: '🚂', theme: 'vehicle' }, { word: 'plane', emoji: '✈️', theme: 'vehicle' },
+  { word: 'ship', emoji: '🚢', theme: 'vehicle' }, { word: 'bike', emoji: '🚲', theme: 'vehicle' },
+  { word: 'truck', emoji: '🚚', theme: 'vehicle' }, { word: 'taxi', emoji: '🚕', theme: 'vehicle' },
+  { word: 'sun', emoji: '☀️', theme: 'nature' }, { word: 'moon', emoji: '🌙', theme: 'nature' },
+  { word: 'star', emoji: '⭐', theme: 'nature' }, { word: 'tree', emoji: '🌳', theme: 'nature' },
+  { word: 'flower', emoji: '🌸', theme: 'nature' }, { word: 'rain', emoji: '🌧️', theme: 'nature' },
+  { word: 'cloud', emoji: '☁️', theme: 'nature' }, { word: 'snow', emoji: '❄️', theme: 'nature' },
+  { word: 'hat', emoji: '🎩', theme: 'object' }, { word: 'cup', emoji: '🥤', theme: 'object' },
+  { word: 'ball', emoji: '⚽', theme: 'object' }, { word: 'book', emoji: '📖', theme: 'object' },
+  { word: 'clock', emoji: '🕐', theme: 'object' }, { word: 'key', emoji: '🔑', theme: 'object' },
+  { word: 'gift', emoji: '🎁', theme: 'object' }, { word: 'umbrella', emoji: '☂️', theme: 'object' },
 ];
 
 const ENGLISH_LEVELS = [

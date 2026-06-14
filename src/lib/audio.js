@@ -309,6 +309,20 @@ export function speakEn(text, { rate = 0.85, pitch = 1.15 } = {}) {
   } catch {}
 }
 
+// 한국어 단어 음성 — speechSynthesis ko-KR. 음량은 voice 슬라이더 연동.
+export function speakKo(text, { rate = 0.95, pitch = 1.3 } = {}) {
+  try {
+    if (!text || !('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(String(text));
+    u.lang = 'ko-KR';
+    u.rate = rate; u.pitch = pitch; u.volume = vols.voice;
+    const ko = (window.speechSynthesis.getVoices() || []).find((v) => /^ko/i.test(v.lang));
+    if (ko) u.voice = ko;
+    window.speechSynthesis.speak(u);
+  } catch {}
+}
+
 // /voices/<key>.mp3 재생. 없거나 실패하면 speechSynthesis(fallbackText) 폴백.
 function playVoice(key, fallbackText) {
   unlockAudio();
