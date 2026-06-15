@@ -4,7 +4,7 @@
 
 import React from 'react'
 import { VoiceGuide, PlaceholderScreen } from './shell.jsx'
-import { playSfx, playTone, playDrum, playToolVoice, startDraw, drawTick, stopDraw } from './lib/audio.js'
+import { playSfx, playTone, playDrum, playToolVoice, startDraw, drawTick, stopDraw, speakKo } from './lib/audio.js'
 import { EnglishActivity } from './english.jsx'
 
 const { useState: useStateA, useEffect: useEffectA, useRef: useRefA, useMemo: useMemoA, useCallback: useCallbackA } = React;
@@ -1715,123 +1715,13 @@ export function WordMatchActivity({ tone, fontSize, onComplete, onFinish, voiceS
 }
 
 function HangulWordsActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
-  const t = tone;
-  const color = t.cat.hangul;
-  const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
-  const [levelIdx, setLevelIdx] = useStateA(0);
-  const cfg = hangulWordLevelConfig(levelIdx);
-  const POOL_WORDS = HANGUL_WORDS.map((w) => w.word);
-  const byWord = (w) => HANGUL_WORDS.find((x) => x.word === w);
-
-  const newRound = () => {
-    const shuffled = shuffleA(HANGUL_WORDS);
-    const targets = shuffled.slice(0, cfg.targets).map((x) => x.word);
-    return { targets, opts: multiTargetOptions(targets, cfg.options, POOL_WORDS) };
-  };
-  const [round, setRound] = useStateA(newRound);
-  const [progress, setProgress] = useStateA(0);
-  const [done, setDone] = useStateA(false);
-  const mp = useMultiPick();
-  const timersRef = useRefA([]);
-  const addTimer = (id) => timersRef.current.push(id);
-  useEffectA(() => () => { timersRef.current.forEach((id) => clearTimeout(id)); }, []);
-  useEffectA(() => {
-    timersRef.current.forEach((id) => clearTimeout(id));
-    timersRef.current = [];
-    setProgress(0); setDone(false); setRound(newRound()); mp.reset();
-  }, [levelIdx]);
-
-  const onPick = (w) => {
-    if (done) return;
-    const r = mp.pick(w, round.targets);
-    if (r === 'wrong') playSfx('wrong');
-    else if (r === 'correct') playSfx('correct');
-    else if (r === 'complete') {
-      playSfx('correct');
-      onComplete && onComplete(1);
-      const nextN = progress + 1; setProgress(nextN);
-      addTimer(setTimeout(() => {
-        if (nextN >= cfg.questions) { setDone(true); onComplete && onComplete(3); }
-        else { setRound(newRound()); mp.reset(); }
-      }, 850));
-    }
-  };
-  const restart = () => { setProgress(0); setDone(false); setRound(newRound()); mp.reset(); };
-  const nextLevel = () => { if (levelIdx < HANGUL_WORD_LEVELS.length - 1) setLevelIdx(levelIdx + 1); else onFinish && onFinish(); };
-  const prevLevel = () => { if (levelIdx > 0) setLevelIdx(levelIdx - 1); };
-
-  const multi = cfg.targets > 1;
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', position: 'relative' }}>
-      <div style={{ height: 88, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
-        <div style={{ fontSize: fontSize + 14, fontWeight: 900, color: t.text, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 36 }}>🍓</span>
-          낱말 맞추기
-          <span style={{ fontSize: fontSize - 2, fontWeight: 900, background: t.accent, color: t.text,
-            padding: '4px 14px', borderRadius: 16, border: t.outline === 'none' ? 'none' : t.outline, marginLeft: 6 }}>Lv.{levelIdx + 1}</span>
-        </div>
-        <LevelStepper tone={t} cur={levelIdx} total={HANGUL_WORD_LEVELS.length} onPrev={prevLevel} onNext={nextLevel} />
-      </div>
-
-      {!done ? (
-        <React.Fragment>
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, minHeight: 0, padding: '0 32px', flexWrap: 'wrap' }}>
-            {round.targets.map((w) => {
-              const got = mp.found.includes(w);
-              return (
-                <div key={w} style={{ background: color, border: t.outline === 'none' ? 'none' : t.outline, borderRadius: t.cardRadius + 8,
-                  padding: multi ? '18px 30px' : '24px 48px', boxShadow: t.shadow, opacity: got ? 0.5 : 1, transition: 'opacity 0.3s' }}>
-                  <span style={{ fontSize: multi ? 120 : 180, lineHeight: 1 }}>{byWord(w).emoji}</span>
-                </div>
-              );
-            })}
-          </div>
-          <div style={{ flex: '0 0 auto', padding: '14px 32px 4px', display: 'grid', gridTemplateColumns: `repeat(${cfg.options}, 1fr)`, gap: 14 }}>
-            {round.opts.map((w) => {
-              const isRight = mp.found.includes(w);
-              const isWrong = mp.wrongKey === w;
-              return (
-                <button key={w} onClick={() => onPick(w)} disabled={isRight}
-                  onPointerDown={(e) => !isRight && e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.92)' }], { duration: 130 })}
-                  style={{ position: 'relative', height: 84, fontSize: 34, fontWeight: 900, fontFamily: 'inherit',
-                    cursor: isRight ? 'default' : 'pointer', background: isRight ? t.cat.code : isWrong ? t.cat.shape : '#fff',
-                    border: t.outline === 'none' ? `4px solid ${t.text}` : t.outline, borderRadius: t.cardRadius, boxShadow: t.shadow,
-                    animation: isWrong ? 'kw-shake 0.4s ease' : 'none' }}>
-                  {w}
-                  {isRight && <PickMark kind="right" />}
-                  {isWrong && <PickMark kind="wrong" />}
-                </button>
-              );
-            })}
-          </div>
-          <div style={{ flex: '0 0 auto', padding: '12px 32px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ flex: 1, display: 'flex', gap: 10 }}>
-              {Array.from({ length: cfg.questions }).map((_, i) => (
-                <span key={i} style={{ width: 20, height: 20, borderRadius: 10, background: i < progress ? color : '#fff',
-                  border: i < progress ? 'none' : `2px solid rgba(0,0,0,0.18)` }} />
-              ))}
-            </div>
-            <div style={{ fontSize: fontSize, fontWeight: 900, color: t.text }}>{progress}/{cfg.questions}</div>
-          </div>
-        </React.Fragment>
-      ) : (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18 }}>
-          <div style={{ fontSize: 140, animation: 'kw-pop 0.6s cubic-bezier(.34,1.56,.64,1) both' }}>🎉</div>
-          <div style={{ fontSize: fontSize + 22, fontWeight: 900, color: t.text }}>{levelIdx < HANGUL_WORD_LEVELS.length - 1 ? `Lv.${levelIdx + 1} 성공!` : '모든 레벨 성공!'}</div>
-          <div style={{ display: 'flex', gap: 14 }}>
-            <button onClick={restart} style={{ background: '#fff', color: t.text, border: accentBorder, borderRadius: 28,
-              padding: '16px 28px', fontSize: fontSize + 2, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadowSm }}>🔄 다시</button>
-            <button onClick={nextLevel}
-              onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.94)' }], { duration: 140 })}
-              style={{ background: color, color: t.textOnColor, border: t.outline === 'none' ? 'none' : t.outline, borderRadius: 28,
-                padding: '16px 30px', fontSize: fontSize + 2, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadow }}>
-              {levelIdx < HANGUL_WORD_LEVELS.length - 1 ? '다음 레벨 ▶' : '끝내기 🎀'}
-            </button>
-          </div>
-        </div>
-      )}
-      <VoiceGuide tone={t} show={voiceShow} text={done ? '잘했어!' : multi ? '그림에 맞는 낱말을 모두 골라봐' : '무슨 낱말일까?'} fontSize={fontSize - 4} />
-    </div>
+    <WordMatchActivity
+      tone={tone} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow}
+      words={HANGUL_WORDS} themes={WORD_THEMES}
+      levelConfig={hangulWordLevelConfig} levelsLength={HANGUL_WORD_LEVELS.length}
+      color={tone.cat.hangul} icon="🍓" title="낱말 맞추기" speak={speakKo}
+    />
   );
 }
 

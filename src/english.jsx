@@ -1,7 +1,7 @@
 // 영어놀이 카테고리 — 데이터 + 순수 함수 + 6활동 + 라우터.
 import React from 'react'
 import { VoiceGuide } from './shell.jsx'
-import { LevelStepper, useMultiPick, multiTargetOptions, PickMark } from './activities.jsx'
+import { LevelStepper, useMultiPick, multiTargetOptions, PickMark, WordMatchActivity, WORD_THEMES } from './activities.jsx'
 import { playSfx, speakEn } from './lib/audio.js'
 
 const { useState: useS, useEffect: useE, useRef: useR } = React;
@@ -284,113 +284,13 @@ function PhonicsActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
 
 // 단어 맞추기 — 그림(이모지) 보고 영어 단어 고르기. 레벨.
 function EnglishWordsActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
-  const t = tone;
-  const color = t.cat.english;
-  const [levelIdx, setLevelIdx] = useS(0);
-  const cfg = englishLevelConfig(levelIdx);
-  const POOL_WORDS = WORD_SET.map((w) => w.word);
-  const byWord = (w) => WORD_SET.find((x) => x.word === w);
-  const newRound = () => {
-    const shuffled = [...WORD_SET].sort(() => Math.random() - 0.5);
-    const picked = shuffled.slice(0, cfg.targets).map((x) => x.word);
-    return { targets: picked, opts: multiTargetOptions(picked, cfg.options, POOL_WORDS) };
-  };
-  const [round, setRound] = useS(newRound);
-  const [progress, setProgress] = useS(0);
-  const [done, setDone] = useS(false);
-  const mp = useMultiPick();
-  const timersRef = useR([]);
-  const addT = (id) => timersRef.current.push(id);
-  useE(() => () => { timersRef.current.forEach((id) => clearTimeout(id)); }, []);
-  useE(() => {
-    timersRef.current.forEach((id) => clearTimeout(id));
-    timersRef.current = [];
-    setProgress(0); setDone(false); setRound(newRound()); mp.reset();
-  }, [levelIdx]);
-
-  const pick = (w) => {
-    if (done) return;
-    const r = mp.pick(w, round.targets);
-    if (r === 'wrong') playSfx('wrong');
-    else if (r === 'correct') { playSfx('correct'); speakEn(w); }
-    else if (r === 'complete') {
-      playSfx('correct'); speakEn(w);
-      onComplete && onComplete(1);
-      const n = progress + 1; setProgress(n);
-      addT(setTimeout(() => {
-        if (n >= cfg.questions) { setDone(true); onComplete && onComplete(3); }
-        else { setRound(newRound()); mp.reset(); }
-      }, 850));
-    }
-  };
-  const nextLevel = () => { if (levelIdx < 4) setLevelIdx(levelIdx + 1); else onFinish && onFinish(); };
-  const prevLevel = () => { if (levelIdx > 0) setLevelIdx(levelIdx - 1); };
-  const restart = () => { setProgress(0); setDone(false); setRound(newRound()); mp.reset(); };
-
-  const multi = cfg.targets > 1;
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', position: 'relative' }}>
-      <TitleBar t={t} fontSize={fontSize} icon="🧩" title="단어 맞추기"
-        levelStepper={<LevelStepper tone={t} cur={levelIdx} total={5} onPrev={prevLevel} onNext={nextLevel} />} />
-      {!done ? (
-        <React.Fragment>
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, minHeight: 0, padding: '0 32px', flexWrap: 'wrap' }}>
-            {round.targets.map((w) => {
-              const got = mp.found.includes(w);
-              return (
-                <div key={w} style={{ background: color, border: t.outline === 'none' ? 'none' : t.outline, borderRadius: t.cardRadius + 8,
-                  padding: multi ? '18px 30px' : '24px 48px', boxShadow: t.shadow, opacity: got ? 0.5 : 1, transition: 'opacity 0.3s' }}>
-                  <span style={{ fontSize: multi ? 120 : 180, lineHeight: 1 }}>{byWord(w).emoji}</span>
-                </div>
-              );
-            })}
-          </div>
-          <div style={{ flex: '0 0 auto', padding: '14px 32px 4px', display: 'grid', gridTemplateColumns: `repeat(${cfg.options}, 1fr)`, gap: 14 }}>
-            {round.opts.map((w) => {
-              const isRight = mp.found.includes(w);
-              const isWrong = mp.wrongKey === w;
-              return (
-                <button key={w} onClick={() => pick(w)} disabled={isRight}
-                  onPointerDown={(e) => !isRight && e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.92)' }], { duration: 130 })}
-                  style={{ position: 'relative', height: 84, fontSize: 30, fontWeight: 900, fontFamily: 'inherit',
-                    cursor: isRight ? 'default' : 'pointer', background: isRight ? t.cat.code : isWrong ? t.cat.shape : '#fff',
-                    border: t.outline === 'none' ? `4px solid ${t.text}` : t.outline, borderRadius: t.cardRadius, boxShadow: t.shadow,
-                    animation: isWrong ? 'kw-shake 0.4s ease' : 'none' }}>
-                  {w}
-                  {isRight && <PickMark kind="right" />}
-                  {isWrong && <PickMark kind="wrong" />}
-                </button>
-              );
-            })}
-          </div>
-          <div style={{ flex: '0 0 auto', padding: '12px 32px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ flex: 1, display: 'flex', gap: 10 }}>
-              {Array.from({ length: cfg.questions }).map((_, i) => (
-                <span key={i} style={{ width: 20, height: 20, borderRadius: 10, background: i < progress ? color : '#fff',
-                  border: i < progress ? 'none' : `2px solid rgba(0,0,0,0.18)` }} />
-              ))}
-            </div>
-            <div style={{ fontSize: fontSize, fontWeight: 900, color: t.text }}>{progress}/{cfg.questions}</div>
-          </div>
-        </React.Fragment>
-      ) : (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18 }}>
-          <div style={{ fontSize: 140, animation: 'kw-pop 0.6s cubic-bezier(.34,1.56,.64,1) both' }}>🎉</div>
-          <div style={{ fontSize: fontSize + 22, fontWeight: 900, color: t.text }}>{levelIdx < 4 ? `Lv.${levelIdx + 1} 성공!` : '모든 레벨 성공!'}</div>
-          <div style={{ display: 'flex', gap: 14 }}>
-            <button onClick={restart} style={{ background: '#fff', color: t.text, border: accent(t), borderRadius: 28,
-              padding: '16px 28px', fontSize: fontSize + 2, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadowSm }}>🔄 다시</button>
-            <button onClick={nextLevel}
-              onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.94)' }], { duration: 140 })}
-              style={{ background: color, color: t.textOnColor, border: t.outline === 'none' ? 'none' : t.outline, borderRadius: 28,
-                padding: '16px 30px', fontSize: fontSize + 2, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadow }}>
-              {levelIdx < 4 ? '다음 레벨 ▶' : '끝내기 🎀'}
-            </button>
-          </div>
-        </div>
-      )}
-      <VoiceGuide tone={t} show={voiceShow} text={done ? '잘했어!' : multi ? '그림에 맞는 단어를 모두 골라봐' : '그림에 맞는 단어를 골라봐'} fontSize={fontSize - 4} />
-    </div>
+    <WordMatchActivity
+      tone={tone} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow}
+      words={WORD_SET} themes={WORD_THEMES}
+      levelConfig={englishLevelConfig} levelsLength={5}
+      color={tone.cat.english} icon="🧩" title="단어 맞추기" speak={speakEn}
+    />
   );
 }
 
