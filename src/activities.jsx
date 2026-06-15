@@ -1544,6 +1544,57 @@ function shuffleA(arr) {
   return a;
 }
 
+// ── 글짓기 공용 ───────────────────────────────────────────────
+// 문장 조립(순수): slot=놓인 카드 단어(없으면 blank), fixed=텍스트. join('').
+export function sentenceText(parts, placed, blank = '⬜') {
+  let si = -1;
+  return parts.map((p) => {
+    if (p.type === 'fixed') return p.text;
+    si += 1; const card = placed[si];
+    return card ? card.word : blank;
+  }).join('');
+}
+// 모든 slot의 놓인 카드 단어가 정답이면 true(순수).
+export function isSentenceComplete(parts, placed) {
+  let si = -1;
+  for (const p of parts) {
+    if (p.type !== 'slot') continue;
+    si += 1; const card = placed[si];
+    if (!card || card.word !== p.answer) return false;
+  }
+  return true;
+}
+// 트레이 카드: 정답 카드 전부 + 방해 카드(풀에서, 정답 제외) min(distN,남은). 셔플.
+export function buildTray(template, poolCards, distractorN) {
+  const correct = template.parts.filter((p) => p.type === 'slot').map((p) => ({ word: p.answer, emoji: p.emoji }));
+  const correctWords = correct.map((c) => c.word);
+  const distractors = shuffle(poolCards.filter((c) => !correctWords.includes(c.word))).slice(0, Math.max(0, distractorN));
+  return shuffle([...correct, ...distractors]);
+}
+
+// 한글 문장 (Lv1 빈칸1 / Lv2 빈칸2 / Lv3 빈칸3). 동사는 그림 카드.
+export const HANGUL_SENTENCES = [
+  [
+    { parts: [{ type: 'slot', answer: '사과', emoji: '🍎' }, { type: 'fixed', text: '를 먹어요' }] },
+    { parts: [{ type: 'slot', answer: '강아지', emoji: '🐶' }, { type: 'fixed', text: '가 뛰어요' }] },
+    { parts: [{ type: 'slot', answer: '아기', emoji: '👶' }, { type: 'fixed', text: '가 자요' }] },
+    { parts: [{ type: 'slot', answer: '우유', emoji: '🥛' }, { type: 'fixed', text: '를 마셔요' }] },
+    { parts: [{ type: 'slot', answer: '책', emoji: '📖' }, { type: 'fixed', text: '을 읽어요' }] },
+  ],
+  [
+    { parts: [{ type: 'slot', answer: '포도', emoji: '🍇' }, { type: 'fixed', text: '를 ' }, { type: 'slot', answer: '먹어요', emoji: '😋' }] },
+    { parts: [{ type: 'slot', answer: '고양이', emoji: '🐱' }, { type: 'fixed', text: '가 ' }, { type: 'slot', answer: '자요', emoji: '😴' }] },
+    { parts: [{ type: 'slot', answer: '아이', emoji: '🧒' }, { type: 'fixed', text: '가 ' }, { type: 'slot', answer: '웃어요', emoji: '😄' }] },
+    { parts: [{ type: 'slot', answer: '주스', emoji: '🧃' }, { type: 'fixed', text: '를 ' }, { type: 'slot', answer: '마셔요', emoji: '🥤' }] },
+  ],
+  [
+    { parts: [{ type: 'slot', answer: '토끼', emoji: '🐰' }, { type: 'fixed', text: '가 ' }, { type: 'slot', answer: '당근', emoji: '🥕' }, { type: 'fixed', text: '을 ' }, { type: 'slot', answer: '먹어요', emoji: '😋' }] },
+    { parts: [{ type: 'slot', answer: '아기', emoji: '👶' }, { type: 'fixed', text: '가 ' }, { type: 'slot', answer: '우유', emoji: '🥛' }, { type: 'fixed', text: '를 ' }, { type: 'slot', answer: '마셔요', emoji: '🥤' }] },
+    { parts: [{ type: 'slot', answer: '고양이', emoji: '🐱' }, { type: 'fixed', text: '가 ' }, { type: 'slot', answer: '생선', emoji: '🐟' }, { type: 'fixed', text: '을 ' }, { type: 'slot', answer: '먹어요', emoji: '😋' }] },
+    { parts: [{ type: 'slot', answer: '아이', emoji: '🧒' }, { type: 'fixed', text: '가 ' }, { type: 'slot', answer: '책', emoji: '📖' }, { type: 'fixed', text: '을 ' }, { type: 'slot', answer: '읽어요', emoji: '📖' }] },
+  ],
+];
+
 const WORD_MODES = ['pic2word', 'word2pic', 'listen2pic'];
 
 // 공용 단어 맞추기 — 모드(그림→단어/단어→그림/듣고→그림) + 주제 + 멀티타깃.

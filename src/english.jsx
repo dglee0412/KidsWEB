@@ -60,6 +60,28 @@ export const WORD_SET = [
   { word: 'gift', emoji: '🎁', theme: 'object' }, { word: 'umbrella', emoji: '☂️', theme: 'object' },
 ];
 
+// 영어 문장 (Lv1 빈칸1 / Lv2 빈칸2 / Lv3 빈칸2).
+export const ENGLISH_SENTENCES = [
+  [
+    { parts: [{ type: 'fixed', text: 'I see a ' }, { type: 'slot', answer: 'cat', emoji: '🐱' }] },
+    { parts: [{ type: 'fixed', text: 'The ' }, { type: 'slot', answer: 'sun', emoji: '☀️' }, { type: 'fixed', text: ' is up' }] },
+    { parts: [{ type: 'fixed', text: 'A ' }, { type: 'slot', answer: 'dog', emoji: '🐶' }, { type: 'fixed', text: ' runs' }] },
+    { parts: [{ type: 'fixed', text: 'I like ' }, { type: 'slot', answer: 'milk', emoji: '🥛' }] },
+  ],
+  [
+    { parts: [{ type: 'fixed', text: 'The ' }, { type: 'slot', answer: 'cat', emoji: '🐱' }, { type: 'fixed', text: ' is ' }, { type: 'slot', answer: 'sleeping', emoji: '😴' }] },
+    { parts: [{ type: 'fixed', text: 'I ' }, { type: 'slot', answer: 'eat', emoji: '😋' }, { type: 'fixed', text: ' an ' }, { type: 'slot', answer: 'apple', emoji: '🍎' }] },
+    { parts: [{ type: 'fixed', text: 'A ' }, { type: 'slot', answer: 'bird', emoji: '🐦' }, { type: 'fixed', text: ' can ' }, { type: 'slot', answer: 'sing', emoji: '🎤' }] },
+    { parts: [{ type: 'fixed', text: 'The ' }, { type: 'slot', answer: 'boy', emoji: '🧒' }, { type: 'fixed', text: ' is ' }, { type: 'slot', answer: 'happy', emoji: '😄' }] },
+  ],
+  [
+    { parts: [{ type: 'fixed', text: 'The ' }, { type: 'slot', answer: 'dog', emoji: '🐶' }, { type: 'fixed', text: ' runs to the ' }, { type: 'slot', answer: 'park', emoji: '🏞️' }] },
+    { parts: [{ type: 'fixed', text: 'I ' }, { type: 'slot', answer: 'read', emoji: '📖' }, { type: 'fixed', text: ' a ' }, { type: 'slot', answer: 'book', emoji: '📚' }] },
+    { parts: [{ type: 'fixed', text: 'The ' }, { type: 'slot', answer: 'bird', emoji: '🐦' }, { type: 'fixed', text: ' sings a ' }, { type: 'slot', answer: 'song', emoji: '🎵' }] },
+    { parts: [{ type: 'fixed', text: 'We ' }, { type: 'slot', answer: 'eat', emoji: '😋' }, { type: 'fixed', text: ' some ' }, { type: 'slot', answer: 'cake', emoji: '🍰' }] },
+  ],
+];
+
 const ENGLISH_LEVELS = [
   { targets: 1, options: 4, questions: 6 },
   { targets: 1, options: 4, questions: 8 },
