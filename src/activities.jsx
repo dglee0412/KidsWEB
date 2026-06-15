@@ -1596,7 +1596,11 @@ export function WordMatchActivity({ tone, fontSize, onComplete, onFinish, voiceS
       const n = progress + 1; setProgress(n);
       addTimer(setTimeout(() => {
         if (n >= cfg.questions) { setDone(true); onComplete && onComplete(3); }
-        else { setRound(newRound()); mp.reset(); }
+        else {
+          timersRef.current.forEach((id) => clearTimeout(id));
+          timersRef.current = [];
+          setRound(newRound()); mp.reset();
+        }
       }, 850));
     }
   };
