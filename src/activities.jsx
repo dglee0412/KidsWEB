@@ -4,7 +4,7 @@
 
 import React from 'react'
 import { VoiceGuide, PlaceholderScreen } from './shell.jsx'
-import { playSfx, playTone, playDrum, playToolVoice, startDraw, drawTick, stopDraw } from './lib/audio.js'
+import { playSfx, playTone, playDrum, playToolVoice, startDraw, drawTick, stopDraw, speakKo } from './lib/audio.js'
 import { EnglishActivity } from './english.jsx'
 
 const { useState: useStateA, useEffect: useEffectA, useRef: useRefA, useMemo: useMemoA, useCallback: useCallbackA } = React;
@@ -1437,28 +1437,41 @@ const VOWELS = [
   { ch: 'ㅣ', name: '이', word: '이불',  emoji: '🛏️' },
 ];
 
+export const WORD_THEMES = [
+  { id: 'animal',  name: '동물' },
+  { id: 'food',    name: '음식' },
+  { id: 'vehicle', name: '탈것' },
+  { id: 'nature',  name: '자연' },
+  { id: 'object',  name: '사물' },
+];
+
+// 주제별 단어 필터(순수). theme==='all'이면 전체.
+export function wordsByTheme(words, theme) {
+  return theme === 'all' ? words : words.filter((w) => w.theme === theme);
+}
+
 // 한글 낱말 풀 — 그림 보고 단어 맞추기
-const HANGUL_WORDS = [
-  { word: '사과',   emoji: '🍎' },
-  { word: '바나나', emoji: '🍌' },
-  { word: '포도',   emoji: '🍇' },
-  { word: '딸기',   emoji: '🍓' },
-  { word: '나비',   emoji: '🦋' },
-  { word: '오리',   emoji: '🦆' },
-  { word: '토끼',   emoji: '🐰' },
-  { word: '코끼리', emoji: '🐘' },
-  { word: '기린',   emoji: '🦒' },
-  { word: '여우',   emoji: '🦊' },
-  { word: '강아지', emoji: '🐶' },
-  { word: '고양이', emoji: '🐱' },
-  { word: '치즈',   emoji: '🧀' },
-  { word: '우유',   emoji: '🥛' },
-  { word: '자전거', emoji: '🚲' },
-  { word: '자동차', emoji: '🚗' },
-  { word: '비행기', emoji: '✈️' },
-  { word: '배',     emoji: '🚢' },
-  { word: '꽃',     emoji: '🌸' },
-  { word: '별',     emoji: '⭐' },
+export const HANGUL_WORDS = [
+  { word: '고양이', emoji: '🐱', theme: 'animal' }, { word: '강아지', emoji: '🐶', theme: 'animal' },
+  { word: '여우',   emoji: '🦊', theme: 'animal' }, { word: '사자',   emoji: '🦁', theme: 'animal' },
+  { word: '곰',     emoji: '🐻', theme: 'animal' }, { word: '토끼',   emoji: '🐰', theme: 'animal' },
+  { word: '돼지',   emoji: '🐷', theme: 'animal' }, { word: '개구리', emoji: '🐸', theme: 'animal' },
+  { word: '사과',   emoji: '🍎', theme: 'food' },   { word: '바나나', emoji: '🍌', theme: 'food' },
+  { word: '포도',   emoji: '🍇', theme: 'food' },   { word: '달걀',   emoji: '🥚', theme: 'food' },
+  { word: '빵',     emoji: '🍞', theme: 'food' },   { word: '케이크', emoji: '🍰', theme: 'food' },
+  { word: '우유',   emoji: '🥛', theme: 'food' },   { word: '옥수수', emoji: '🌽', theme: 'food' },
+  { word: '자동차', emoji: '🚗', theme: 'vehicle' },{ word: '버스',   emoji: '🚌', theme: 'vehicle' },
+  { word: '기차',   emoji: '🚂', theme: 'vehicle' },{ word: '비행기', emoji: '✈️', theme: 'vehicle' },
+  { word: '배',     emoji: '🚢', theme: 'vehicle' },{ word: '자전거', emoji: '🚲', theme: 'vehicle' },
+  { word: '트럭',   emoji: '🚚', theme: 'vehicle' },{ word: '택시',   emoji: '🚕', theme: 'vehicle' },
+  { word: '해',     emoji: '☀️', theme: 'nature' }, { word: '달',     emoji: '🌙', theme: 'nature' },
+  { word: '별',     emoji: '⭐', theme: 'nature' }, { word: '나무',   emoji: '🌳', theme: 'nature' },
+  { word: '꽃',     emoji: '🌸', theme: 'nature' }, { word: '비',     emoji: '🌧️', theme: 'nature' },
+  { word: '구름',   emoji: '☁️', theme: 'nature' }, { word: '눈',     emoji: '❄️', theme: 'nature' },
+  { word: '모자',   emoji: '🎩', theme: 'object' }, { word: '컵',     emoji: '🥤', theme: 'object' },
+  { word: '공',     emoji: '⚽', theme: 'object' }, { word: '책',     emoji: '📖', theme: 'object' },
+  { word: '시계',   emoji: '🕐', theme: 'object' }, { word: '열쇠',   emoji: '🔑', theme: 'object' },
+  { word: '선물',   emoji: '🎁', theme: 'object' }, { word: '우산',   emoji: '☂️', theme: 'object' },
 ];
 
 const HANGUL_WORD_LEVELS = [
@@ -1531,19 +1544,27 @@ function shuffleA(arr) {
   return a;
 }
 
-function HangulWordsActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
+const WORD_MODES = ['pic2word', 'word2pic', 'listen2pic'];
+
+// 공용 단어 맞추기 — 모드(그림→단어/단어→그림/듣고→그림) + 주제 + 멀티타깃.
+// 정답 키는 항상 word, 모드는 프롬프트/보기 렌더만 바꾼다.
+export function WordMatchActivity({ tone, fontSize, onComplete, onFinish, voiceShow, words, themes, levelConfig, levelsLength, color, icon, title, speak }) {
   const t = tone;
-  const color = t.cat.hangul;
   const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
+  const allThemes = [{ id: 'all', name: '전체' }, ...themes];
   const [levelIdx, setLevelIdx] = useStateA(0);
-  const cfg = hangulWordLevelConfig(levelIdx);
-  const POOL_WORDS = HANGUL_WORDS.map((w) => w.word);
-  const byWord = (w) => HANGUL_WORDS.find((x) => x.word === w);
+  const [theme, setTheme] = useStateA('all');
+  const cfg = levelConfig(levelIdx);
+  const byWord = (w) => words.find((x) => x.word === w);
 
   const newRound = () => {
-    const shuffled = shuffleA(HANGUL_WORDS);
-    const targets = shuffled.slice(0, cfg.targets).map((x) => x.word);
-    return { targets, opts: multiTargetOptions(targets, cfg.options, POOL_WORDS) };
+    const poolWords = wordsByTheme(words, theme).map((w) => w.word);
+    const tCount = Math.min(cfg.targets, poolWords.length);
+    const oCount = Math.min(cfg.options, poolWords.length);
+    const targets = shuffle(poolWords).slice(0, tCount);
+    const opts = multiTargetOptions(targets, oCount, poolWords);
+    const mode = WORD_MODES[Math.floor(Math.random() * WORD_MODES.length)];
+    return { targets, opts, mode };
   };
   const [round, setRound] = useStateA(newRound);
   const [progress, setProgress] = useStateA(0);
@@ -1552,42 +1573,66 @@ function HangulWordsActivity({ tone, fontSize, onComplete, onFinish, voiceShow }
   const timersRef = useRefA([]);
   const addTimer = (id) => timersRef.current.push(id);
   useEffectA(() => () => { timersRef.current.forEach((id) => clearTimeout(id)); }, []);
+
   useEffectA(() => {
     timersRef.current.forEach((id) => clearTimeout(id));
     timersRef.current = [];
     setProgress(0); setDone(false); setRound(newRound()); mp.reset();
-  }, [levelIdx]);
+  }, [levelIdx, theme]);
+
+  useEffectA(() => {
+    if (round.mode !== 'listen2pic') return;
+    round.targets.forEach((w, i) => { addTimer(setTimeout(() => speak(w), 350 + i * 700)); });
+  }, [round]);
 
   const onPick = (w) => {
     if (done) return;
     const r = mp.pick(w, round.targets);
     if (r === 'wrong') playSfx('wrong');
-    else if (r === 'correct') playSfx('correct');
+    else if (r === 'correct') { playSfx('correct'); speak(w); }
     else if (r === 'complete') {
-      playSfx('correct');
+      playSfx('correct'); speak(w);
       onComplete && onComplete(1);
-      const nextN = progress + 1; setProgress(nextN);
+      const n = progress + 1; setProgress(n);
       addTimer(setTimeout(() => {
-        if (nextN >= cfg.questions) { setDone(true); onComplete && onComplete(3); }
-        else { setRound(newRound()); mp.reset(); }
+        if (n >= cfg.questions) { setDone(true); onComplete && onComplete(3); }
+        else {
+          timersRef.current.forEach((id) => clearTimeout(id));
+          timersRef.current = [];
+          setRound(newRound()); mp.reset();
+        }
       }, 850));
     }
   };
   const restart = () => { setProgress(0); setDone(false); setRound(newRound()); mp.reset(); };
-  const nextLevel = () => { if (levelIdx < HANGUL_WORD_LEVELS.length - 1) setLevelIdx(levelIdx + 1); else onFinish && onFinish(); };
+  const nextLevel = () => { if (levelIdx < levelsLength - 1) setLevelIdx(levelIdx + 1); else onFinish && onFinish(); };
   const prevLevel = () => { if (levelIdx > 0) setLevelIdx(levelIdx - 1); };
 
-  const multi = cfg.targets > 1;
+  const multi = round.targets.length > 1;
+  const showWordOptions = round.mode === 'pic2word';
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', position: 'relative' }}>
       <div style={{ height: 88, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
         <div style={{ fontSize: fontSize + 14, fontWeight: 900, color: t.text, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 36 }}>🍓</span>
-          낱말 맞추기
+          <span style={{ fontSize: 36 }}>{icon}</span>{title}
           <span style={{ fontSize: fontSize - 2, fontWeight: 900, background: t.accent, color: t.text,
             padding: '4px 14px', borderRadius: 16, border: t.outline === 'none' ? 'none' : t.outline, marginLeft: 6 }}>Lv.{levelIdx + 1}</span>
         </div>
-        <LevelStepper tone={t} cur={levelIdx} total={HANGUL_WORD_LEVELS.length} onPrev={prevLevel} onNext={nextLevel} />
+        <LevelStepper tone={t} cur={levelIdx} total={levelsLength} onPrev={prevLevel} onNext={nextLevel} />
+      </div>
+
+      <div style={{ flex: '0 0 auto', padding: '0 24px 6px', display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+        {allThemes.map((th) => {
+          const active = theme === th.id;
+          return (
+            <button key={th.id} onClick={() => setTheme(th.id)}
+              style={{ height: 38, padding: '0 16px', borderRadius: 19,
+                background: active ? color : '#fff', color: active ? t.textOnColor : t.text,
+                border: active ? (t.outline === 'none' ? 'none' : t.outline) : accentBorder,
+                fontSize: fontSize - 4, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit',
+                boxShadow: active ? t.shadowSm : 'none' }}>{th.name}</button>
+          );
+        })}
       </div>
 
       {!done ? (
@@ -1595,32 +1640,43 @@ function HangulWordsActivity({ tone, fontSize, onComplete, onFinish, voiceShow }
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, minHeight: 0, padding: '0 32px', flexWrap: 'wrap' }}>
             {round.targets.map((w) => {
               const got = mp.found.includes(w);
+              const cardStyle = {
+                background: color, border: t.outline === 'none' ? 'none' : t.outline, borderRadius: t.cardRadius + 8,
+                padding: multi ? '16px 24px' : '22px 40px', boxShadow: t.shadow, opacity: got ? 0.5 : 1, transition: 'opacity 0.3s',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              };
+              if (round.mode === 'pic2word') {
+                return <div key={w} style={cardStyle}><span style={{ fontSize: multi ? 110 : 170, lineHeight: 1 }}>{byWord(w)?.emoji || '❓'}</span></div>;
+              }
+              if (round.mode === 'word2pic') {
+                return <div key={w} style={cardStyle}><span style={{ fontSize: multi ? 56 : 92, fontWeight: 900, color: t.textOnColor, lineHeight: 1 }}>{w}</span></div>;
+              }
               return (
-                <div key={w} style={{ background: color, border: t.outline === 'none' ? 'none' : t.outline, borderRadius: t.cardRadius + 8,
-                  padding: multi ? '18px 30px' : '24px 48px', boxShadow: t.shadow, opacity: got ? 0.5 : 1, transition: 'opacity 0.3s' }}>
-                  <span style={{ fontSize: multi ? 120 : 180, lineHeight: 1 }}>{byWord(w).emoji}</span>
-                </div>
+                <button key={w} onClick={() => speak(w)}
+                  style={{ ...cardStyle, cursor: 'pointer', fontFamily: 'inherit', color: t.textOnColor, fontSize: multi ? 80 : 120 }}>🔊</button>
               );
             })}
           </div>
-          <div style={{ flex: '0 0 auto', padding: '14px 32px 4px', display: 'grid', gridTemplateColumns: `repeat(${cfg.options}, 1fr)`, gap: 14 }}>
+
+          <div style={{ flex: '0 0 auto', padding: '14px 32px 4px', display: 'grid', gridTemplateColumns: `repeat(${round.opts.length}, 1fr)`, gap: 14 }}>
             {round.opts.map((w) => {
               const isRight = mp.found.includes(w);
               const isWrong = mp.wrongKey === w;
               return (
                 <button key={w} onClick={() => onPick(w)} disabled={isRight}
                   onPointerDown={(e) => !isRight && e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.92)' }], { duration: 130 })}
-                  style={{ position: 'relative', height: 84, fontSize: 34, fontWeight: 900, fontFamily: 'inherit',
+                  style={{ position: 'relative', height: 84, fontSize: showWordOptions ? 30 : 52, fontWeight: 900, fontFamily: 'inherit',
                     cursor: isRight ? 'default' : 'pointer', background: isRight ? t.cat.code : isWrong ? t.cat.shape : '#fff',
                     border: t.outline === 'none' ? `4px solid ${t.text}` : t.outline, borderRadius: t.cardRadius, boxShadow: t.shadow,
                     animation: isWrong ? 'kw-shake 0.4s ease' : 'none' }}>
-                  {w}
+                  {showWordOptions ? w : (byWord(w)?.emoji || '❓')}
                   {isRight && <PickMark kind="right" />}
                   {isWrong && <PickMark kind="wrong" />}
                 </button>
               );
             })}
           </div>
+
           <div style={{ flex: '0 0 auto', padding: '12px 32px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
             <div style={{ flex: 1, display: 'flex', gap: 10 }}>
               {Array.from({ length: cfg.questions }).map((_, i) => (
@@ -1634,7 +1690,7 @@ function HangulWordsActivity({ tone, fontSize, onComplete, onFinish, voiceShow }
       ) : (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18 }}>
           <div style={{ fontSize: 140, animation: 'kw-pop 0.6s cubic-bezier(.34,1.56,.64,1) both' }}>🎉</div>
-          <div style={{ fontSize: fontSize + 22, fontWeight: 900, color: t.text }}>{levelIdx < HANGUL_WORD_LEVELS.length - 1 ? `Lv.${levelIdx + 1} 성공!` : '모든 레벨 성공!'}</div>
+          <div style={{ fontSize: fontSize + 22, fontWeight: 900, color: t.text }}>{levelIdx < levelsLength - 1 ? `Lv.${levelIdx + 1} 성공!` : '모든 레벨 성공!'}</div>
           <div style={{ display: 'flex', gap: 14 }}>
             <button onClick={restart} style={{ background: '#fff', color: t.text, border: accentBorder, borderRadius: 28,
               padding: '16px 28px', fontSize: fontSize + 2, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadowSm }}>🔄 다시</button>
@@ -1642,13 +1698,30 @@ function HangulWordsActivity({ tone, fontSize, onComplete, onFinish, voiceShow }
               onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.94)' }], { duration: 140 })}
               style={{ background: color, color: t.textOnColor, border: t.outline === 'none' ? 'none' : t.outline, borderRadius: 28,
                 padding: '16px 30px', fontSize: fontSize + 2, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadow }}>
-              {levelIdx < HANGUL_WORD_LEVELS.length - 1 ? '다음 레벨 ▶' : '끝내기 🎀'}
+              {levelIdx < levelsLength - 1 ? '다음 레벨 ▶' : '끝내기 🎀'}
             </button>
           </div>
         </div>
       )}
-      <VoiceGuide tone={t} show={voiceShow} text={done ? '잘했어!' : multi ? '그림에 맞는 낱말을 모두 골라봐' : '무슨 낱말일까?'} fontSize={fontSize - 4} />
+
+      <VoiceGuide tone={t} show={voiceShow}
+        text={done ? '잘했어!'
+          : round.mode === 'word2pic' ? '글자에 맞는 그림을 골라봐'
+          : round.mode === 'listen2pic' ? '듣고 맞는 그림을 골라봐'
+          : (multi ? '그림에 맞는 단어를 모두 골라봐' : '그림에 맞는 단어를 골라봐')}
+        fontSize={fontSize - 4} />
     </div>
+  );
+}
+
+function HangulWordsActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
+  return (
+    <WordMatchActivity
+      tone={tone} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow}
+      words={HANGUL_WORDS} themes={WORD_THEMES}
+      levelConfig={hangulWordLevelConfig} levelsLength={HANGUL_WORD_LEVELS.length}
+      color={tone.cat.hangul} icon="🍓" title="낱말 맞추기" speak={speakKo}
+    />
   );
 }
 

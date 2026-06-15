@@ -147,3 +147,31 @@ describe('hangulWordLevelConfig(5레벨, 풀 클램프)', () => {
     }
   })
 })
+
+import { wordsByTheme, HANGUL_WORDS, WORD_THEMES } from '../activities.jsx'
+import { WORD_SET } from '../english.jsx'
+
+describe('wordsByTheme', () => {
+  const ws = [{ word: 'a', emoji: 'x', theme: 'animal' }, { word: 'b', emoji: 'y', theme: 'food' }]
+  it('all이면 전체, 특정 theme이면 필터, 없으면 빈 배열', () => {
+    expect(wordsByTheme(ws, 'all')).toHaveLength(2)
+    expect(wordsByTheme(ws, 'animal')).toEqual([{ word: 'a', emoji: 'x', theme: 'animal' }])
+    expect(wordsByTheme(ws, 'nope')).toEqual([])
+  })
+})
+
+describe('단어 데이터 주제 적합성', () => {
+  const themeIds = WORD_THEMES.map((t) => t.id)
+  for (const [name, set] of [['english', WORD_SET], ['hangul', HANGUL_WORDS]]) {
+    it(`${name}: 각 단어 theme 유효 + 각 주제 ≥6단어`, () => {
+      for (const w of set) {
+        expect(typeof w.word).toBe('string')
+        expect(w.emoji.length).toBeGreaterThan(0)
+        expect(themeIds).toContain(w.theme)
+      }
+      for (const id of themeIds) {
+        expect(set.filter((w) => w.theme === id).length).toBeGreaterThanOrEqual(6)
+      }
+    })
+  }
+})
