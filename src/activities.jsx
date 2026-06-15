@@ -1591,7 +1591,7 @@ export const HANGUL_SENTENCES = [
     { parts: [{ type: 'slot', answer: '토끼', emoji: '🐰' }, { type: 'fixed', text: '가 ' }, { type: 'slot', answer: '당근', emoji: '🥕' }, { type: 'fixed', text: '을 ' }, { type: 'slot', answer: '먹어요', emoji: '😋' }] },
     { parts: [{ type: 'slot', answer: '아기', emoji: '👶' }, { type: 'fixed', text: '가 ' }, { type: 'slot', answer: '우유', emoji: '🥛' }, { type: 'fixed', text: '를 ' }, { type: 'slot', answer: '마셔요', emoji: '🥤' }] },
     { parts: [{ type: 'slot', answer: '고양이', emoji: '🐱' }, { type: 'fixed', text: '가 ' }, { type: 'slot', answer: '생선', emoji: '🐟' }, { type: 'fixed', text: '을 ' }, { type: 'slot', answer: '먹어요', emoji: '😋' }] },
-    { parts: [{ type: 'slot', answer: '아이', emoji: '🧒' }, { type: 'fixed', text: '가 ' }, { type: 'slot', answer: '책', emoji: '📖' }, { type: 'fixed', text: '을 ' }, { type: 'slot', answer: '읽어요', emoji: '📖' }] },
+    { parts: [{ type: 'slot', answer: '아이', emoji: '🧒' }, { type: 'fixed', text: '가 ' }, { type: 'slot', answer: '책', emoji: '📖' }, { type: 'fixed', text: '을 ' }, { type: 'slot', answer: '읽어요', emoji: '👀' }] },
   ],
 ];
 
