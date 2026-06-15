@@ -1595,6 +1595,209 @@ export const HANGUL_SENTENCES = [
   ],
 ];
 
+const SENTENCE_QUESTIONS = 5;
+const SENTENCE_DISTRACTORS = 3;
+
+// 공용 글짓기 — 빈칸 문장에 카드 드래그/탭, 읽기(현재 상태 음성+글자), 정답 시 다음.
+export function SentenceBuilderActivity({ tone, fontSize, onComplete, onFinish, voiceShow, levels, color, icon, title, speak }) {
+  const t = tone;
+  const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
+  const allCards = useMemoA(() => {
+    const seen = new Set(); const out = [];
+    levels.flat().forEach((tpl) => tpl.parts.forEach((p) => {
+      if (p.type === 'slot' && !seen.has(p.answer)) { seen.add(p.answer); out.push({ word: p.answer, emoji: p.emoji }); }
+    }));
+    return out;
+  }, [levels]);
+  const pickRound = (lvl) => {
+    const pool = levels[Math.max(0, Math.min(levels.length - 1, lvl))];
+    const tpl = pool[Math.floor(Math.random() * pool.length)];
+    const slotCount = tpl.parts.filter((p) => p.type === 'slot').length;
+    return { tpl, placed: Array(slotCount).fill(null), tray: buildTray(tpl, allCards, SENTENCE_DISTRACTORS) };
+  };
+
+  const [levelIdx, setLevelIdx] = useStateA(0);
+  const [round, setRound] = useStateA(() => pickRound(0));
+  const [armed, setArmed] = useStateA(null);
+  const [drag, setDrag] = useStateA(null);
+  const [reveal, setReveal] = useStateA(null);
+  const [progress, setProgress] = useStateA(0);
+  const [done, setDone] = useStateA(false);
+  const wonRef = useRefA(false);
+  const dragRef = useRefA(null);
+  const slotRefs = useRefA({});
+  const timersRef = useRefA([]);
+  const addTimer = (id) => timersRef.current.push(id);
+  useEffectA(() => () => { timersRef.current.forEach((id) => clearTimeout(id)); }, []);
+
+  useEffectA(() => {
+    timersRef.current.forEach((id) => clearTimeout(id)); timersRef.current = [];
+    wonRef.current = false;
+    setRound(pickRound(levelIdx)); setProgress(0); setDone(false); setReveal(null); setArmed(null); setDrag(null);
+  }, [levelIdx]);
+
+  const advanceIfComplete = (tpl, placed) => {
+    if (!isSentenceComplete(tpl.parts, placed) || wonRef.current) return;
+    wonRef.current = true;
+    playSfx('correct');
+    speak(sentenceText(tpl.parts, placed, ''));
+    setReveal(sentenceText(tpl.parts, placed));
+    onComplete && onComplete(1);
+    const n = progress + 1; setProgress(n);
+    addTimer(setTimeout(() => {
+      if (n >= SENTENCE_QUESTIONS) { setDone(true); onComplete && onComplete(3); }
+      else { wonRef.current = false; setRound(pickRound(levelIdx)); setReveal(null); setArmed(null); }
+    }, 1400));
+  };
+
+  const placeCard = (slotIdx, cardIdx) => {
+    const card = round.tray[cardIdx];
+    const placed = round.placed.slice(); placed[slotIdx] = card;
+    setRound({ ...round, placed }); setArmed(null); setReveal(null); playSfx('select');
+    advanceIfComplete(round.tpl, placed);
+  };
+  const onSlotTap = (slotIdx) => {
+    if (done) return;
+    if (armed != null) placeCard(slotIdx, armed);
+    else if (round.placed[slotIdx]) { const placed = round.placed.slice(); placed[slotIdx] = null; setRound({ ...round, placed }); setReveal(null); }
+  };
+
+  const cardDown = (e, cardIdx) => {
+    if (done) return;
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
+    dragRef.current = { cardIdx, sx: e.clientX, sy: e.clientY, moved: false };
+    setDrag({ cardIdx, x: e.clientX, y: e.clientY });
+  };
+  const cardMove = (e) => {
+    const d = dragRef.current; if (!d) return;
+    if (Math.hypot(e.clientX - d.sx, e.clientY - d.sy) > 6) d.moved = true;
+    setDrag({ cardIdx: d.cardIdx, x: e.clientX, y: e.clientY });
+  };
+  const cardUp = (e) => {
+    const d = dragRef.current; if (!d) return;
+    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
+    dragRef.current = null; setDrag(null);
+    if (d.moved) {
+      let hit = -1;
+      for (const k in slotRefs.current) {
+        const el = slotRefs.current[k]; if (!el) continue;
+        const r = el.getBoundingClientRect();
+        if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) { hit = Number(k); break; }
+      }
+      if (hit >= 0) placeCard(hit, d.cardIdx);
+    } else {
+      setArmed((a) => (a === d.cardIdx ? null : d.cardIdx));
+    }
+  };
+
+  const onRead = () => {
+    speak(sentenceText(round.tpl.parts, round.placed, ''));
+    setReveal(sentenceText(round.tpl.parts, round.placed));
+  };
+  const restart = () => { wonRef.current = false; setRound(pickRound(levelIdx)); setProgress(0); setDone(false); setReveal(null); setArmed(null); };
+  const nextLevel = () => { if (levelIdx < levels.length - 1) setLevelIdx(levelIdx + 1); else onFinish && onFinish(); };
+  const prevLevel = () => { if (levelIdx > 0) setLevelIdx(levelIdx - 1); };
+
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', position: 'relative' }}>
+      <div style={{ height: 88, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
+        <div style={{ fontSize: fontSize + 14, fontWeight: 900, color: t.text, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 36 }}>{icon}</span>{title}
+          <span style={{ fontSize: fontSize - 2, fontWeight: 900, background: t.accent, color: t.text,
+            padding: '4px 14px', borderRadius: 16, border: t.outline === 'none' ? 'none' : t.outline, marginLeft: 6 }}>Lv.{levelIdx + 1}</span>
+        </div>
+        <LevelStepper tone={t} cur={levelIdx} total={levels.length} onPrev={prevLevel} onNext={nextLevel} />
+      </div>
+
+      {!done ? (
+        <React.Fragment>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, minHeight: 0, padding: '0 28px', flexWrap: 'wrap' }}>
+            {(() => { let si = -1; return round.tpl.parts.map((p, pi) => {
+              if (p.type === 'fixed') {
+                return <span key={pi} style={{ fontSize: fontSize + 16, fontWeight: 900, color: t.text, whiteSpace: 'pre' }}>{p.text}</span>;
+              }
+              si += 1; const slotIdx = si; const card = round.placed[slotIdx];
+              const correct = card && card.word === p.answer;
+              return (
+                <div key={pi} ref={(el) => { slotRefs.current[slotIdx] = el; }} onClick={() => onSlotTap(slotIdx)}
+                  style={{ width: 100, height: 100, borderRadius: t.cardRadius, cursor: 'pointer',
+                    background: card ? '#fff' : 'rgba(0,0,0,0.04)',
+                    border: correct ? `4px solid ${t.cat.code}` : card ? accentBorder : `4px dashed ${color}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64, lineHeight: 1, boxShadow: card ? t.shadowSm : 'none' }}>
+                  {card ? card.emoji : '⬜'}
+                </div>
+              );
+            }); })()}
+          </div>
+
+          <div style={{ flex: '0 0 auto', padding: '4px 28px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+            <button onClick={onRead}
+              onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.95)' }], { duration: 140 })}
+              style={{ height: 52, padding: '0 26px', borderRadius: 26, background: color, color: t.textOnColor,
+                border: t.outline === 'none' ? 'none' : t.outline, fontSize: fontSize + 2, fontWeight: 900, cursor: 'pointer',
+                fontFamily: 'inherit', boxShadow: t.shadow, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 26 }}>🔊</span>읽기
+            </button>
+            <div style={{ minHeight: 36, fontSize: fontSize + 6, fontWeight: 900, color: t.text }}>{reveal || ''}</div>
+          </div>
+
+          <div style={{ flex: '0 0 auto', padding: '8px 24px 16px', display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+            {round.tray.map((c, i) => {
+              const isArmed = armed === i; const isDragging = drag && drag.cardIdx === i;
+              return (
+                <button key={i}
+                  onPointerDown={(e) => cardDown(e, i)} onPointerMove={cardMove} onPointerUp={cardUp} onPointerCancel={() => { dragRef.current = null; setDrag(null); }}
+                  style={{ position: 'relative', width: 88, height: 88, borderRadius: t.cardRadius,
+                    background: isArmed ? t.accent : '#fff', border: isArmed ? (t.outline === 'none' ? `4px solid ${t.text}` : t.outline) : accentBorder,
+                    fontSize: 52, lineHeight: 1, cursor: 'grab', fontFamily: 'inherit', boxShadow: t.shadow,
+                    touchAction: 'none', opacity: isDragging ? 0.35 : 1,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {c.emoji}
+                </button>
+              );
+            })}
+          </div>
+
+          {drag && (
+            <div style={{ position: 'fixed', left: drag.x, top: drag.y, transform: 'translate(-50%, -50%)',
+              fontSize: 56, lineHeight: 1, pointerEvents: 'none', zIndex: 80, filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.25))' }}>
+              {round.tray[drag.cardIdx]?.emoji}
+            </div>
+          )}
+
+          <div style={{ flex: '0 0 auto', padding: '0 32px 10px', display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ flex: 1, display: 'flex', gap: 10 }}>
+              {Array.from({ length: SENTENCE_QUESTIONS }).map((_, i) => (
+                <span key={i} style={{ width: 20, height: 20, borderRadius: 10, background: i < progress ? color : '#fff',
+                  border: i < progress ? 'none' : `2px solid rgba(0,0,0,0.18)` }} />
+              ))}
+            </div>
+            <div style={{ fontSize: fontSize, fontWeight: 900, color: t.text }}>{progress}/{SENTENCE_QUESTIONS}</div>
+          </div>
+        </React.Fragment>
+      ) : (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18 }}>
+          <div style={{ fontSize: 140, animation: 'kw-pop 0.6s cubic-bezier(.34,1.56,.64,1) both' }}>🎉</div>
+          <div style={{ fontSize: fontSize + 22, fontWeight: 900, color: t.text }}>{levelIdx < levels.length - 1 ? `Lv.${levelIdx + 1} 성공!` : '모든 레벨 성공!'}</div>
+          <div style={{ display: 'flex', gap: 14 }}>
+            <button onClick={restart} style={{ background: '#fff', color: t.text, border: accentBorder, borderRadius: 28,
+              padding: '16px 28px', fontSize: fontSize + 2, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadowSm }}>🔄 다시</button>
+            <button onClick={nextLevel}
+              onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.94)' }], { duration: 140 })}
+              style={{ background: color, color: t.textOnColor, border: t.outline === 'none' ? 'none' : t.outline, borderRadius: 28,
+                padding: '16px 30px', fontSize: fontSize + 2, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadow }}>
+              {levelIdx < levels.length - 1 ? '다음 레벨 ▶' : '끝내기 🎀'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <VoiceGuide tone={t} show={voiceShow}
+        text={done ? '잘했어!' : armed != null ? '빈칸을 눌러 넣어봐' : '카드를 끌어다 빈칸에 넣어봐'} fontSize={fontSize - 4} />
+    </div>
+  );
+}
+
 const WORD_MODES = ['pic2word', 'word2pic', 'listen2pic'];
 
 // 공용 단어 맞추기 — 모드(그림→단어/단어→그림/듣고→그림) + 주제 + 멀티타깃.
