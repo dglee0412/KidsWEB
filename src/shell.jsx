@@ -705,6 +705,7 @@ const SUBMENUS = {
       { id: 'trace',      name: '따라쓰기', emoji: '✏️',  sub: 'Lv.2' },
       { id: 'combine',    name: '글자 조합', emoji: '가', sub: 'Lv.2' },
       { id: 'words',      name: '낱말',   emoji: '🍓', sub: 'Lv.3' },
+      { id: 'sentence',   name: '글짓기', emoji: '✍️', sub: 'Lv.3' },
     ],
   },
   math: {
@@ -743,7 +744,8 @@ const SUBMENUS = {
       { id: 'trace',   name: '따라쓰기',   emoji: '✏️', sub: 'Lv.1' },
       { id: 'phonics', name: '파닉스',     emoji: '🔊', sub: 'Lv.2' },
       { id: 'words',   name: '단어 맞추기', emoji: '🧩', sub: 'Lv.2' },
-      { id: 'song',    name: 'ABC 노래',   emoji: '🎵', sub: '🎶' },
+      { id: 'song',     name: 'ABC 노래',   emoji: '🎵', sub: '🎶' },
+      { id: 'sentence', name: '글짓기',     emoji: '✍️', sub: 'Lv.3' },
     ],
   },
 };

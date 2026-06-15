@@ -1979,6 +1979,15 @@ function HangulWordsActivity({ tone, fontSize, onComplete, onFinish, voiceShow }
   );
 }
 
+function HangulSentenceActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
+  return (
+    <SentenceBuilderActivity
+      tone={tone} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow}
+      levels={HANGUL_SENTENCES} color={tone.cat.hangul} icon="✍️" title="글짓기" speak={speakKo}
+    />
+  );
+}
+
 // ─────────────────────────────────────────────────────────────
 // 한글 — 따라쓰기 (점선 위에 손가락으로 따라 그리기)
 // ─────────────────────────────────────────────────────────────
@@ -5049,7 +5058,8 @@ function Activity({ tone, cat, sub, fontSize, onComplete, onFinish, voiceShow })
     return <ColoringActivity tone={tone} subId={sub?.id || 'cat'} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
   }
   if (cat.id === 'hangul') {
-    if (sub?.id === 'words')   return <HangulWordsActivity tone={tone} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
+    if (sub?.id === 'words')    return <HangulWordsActivity    tone={tone} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
+    if (sub?.id === 'sentence') return <HangulSentenceActivity tone={tone} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
     if (sub?.id === 'trace')   return <TraceActivity       tone={tone} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
     if (sub?.id === 'combine') return <CombineActivity     tone={tone} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
     return <HangulActivity tone={tone} subId={sub?.id || 'consonants'} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
