@@ -99,3 +99,97 @@ export function buildColorSortRound(cfg, colorObjects, colors) {
   const targetKeys = items.filter((o) => o.colorId === targetColorId).map((o) => o.emoji);
   return { targetColorId, items, targetKeys };
 }
+
+// 도형 SVG 렌더(배우기 대형 + 보기 공용)
+export function ShapeGlyph({ shape, size = 200, fill = 'none', stroke = '#333', strokeWidth = 10 }) {
+  return (
+    <svg viewBox="0 0 400 400" width={size} height={size} style={{ display: 'block' }}>
+      <path d={shape.d} fill={fill} stroke={stroke} strokeWidth={strokeWidth} strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+// 좌우 이동 버튼
+function NavBtn({ dir, tone, onClick }) {
+  const t = tone;
+  const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
+  return (
+    <button onClick={onClick} aria-label={dir === 'left' ? '이전' : '다음'}
+      style={{ flex: '0 0 auto', width: 72, height: 72, borderRadius: 36, background: '#fff',
+        border: accentBorder, cursor: 'pointer', fontSize: 30, fontFamily: 'inherit', color: t.text, boxShadow: t.shadowSm }}>
+      {dir === 'left' ? '◀' : '▶'}
+    </button>
+  );
+}
+
+// 공용 배우기 — 대형 시각 + 이름 말풍선 + 🔊 + ◀▶ + ⭐ + 예시
+function BrowseActivity({ tone, fontSize, onComplete, color, icon, title, items, renderBig, speak }) {
+  const t = tone;
+  const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
+  const [idx, setIdx] = useStateA(0);
+  const [collected, setCollected] = useStateA(() => new Set());
+  const cur = items[idx];
+
+  const learn = () => {
+    speak(cur.name);
+    playSfx('select');
+    if (!collected.has(idx)) {
+      const ns = new Set(collected); ns.add(idx); setCollected(ns);
+      onComplete && onComplete(1);
+    }
+  };
+  const next = () => setIdx((i) => (i + 1) % items.length);
+  const prev = () => setIdx((i) => (i - 1 + items.length) % items.length);
+
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
+      <div style={{ height: 88, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
+        <div style={{ fontSize: fontSize + 14, fontWeight: 900, color: t.text, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 36 }}>{icon}</span>{title}
+          <span style={{ fontSize: fontSize - 2, fontWeight: 900, background: t.accent, color: t.text,
+            padding: '4px 14px', borderRadius: 16, border: t.outline === 'none' ? 'none' : t.outline, marginLeft: 6 }}>Lv.1</span>
+        </div>
+      </div>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 16, padding: '0 22px', minHeight: 0 }}>
+        <NavBtn dir="left" tone={t} onClick={prev} />
+        <div style={{ flex: 1, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 24, minWidth: 0 }}>
+          <button onClick={learn}
+            onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.96)' }], { duration: 150 })}
+            style={{ position: 'relative', width: 300, height: 300, background: '#fff', border: accentBorder,
+              borderRadius: t.cardRadius + 12, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadow,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, overflow: 'hidden' }}>
+            {renderBig(cur, t, color)}
+            {collected.has(idx) && <span style={{ position: 'absolute', top: 14, right: 18, fontSize: 44 }}>⭐</span>}
+          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 14 }}>
+            <div style={{ background: '#fff', border: accentBorder, borderRadius: 28, padding: '20px 28px',
+              fontSize: 56, fontWeight: 900, lineHeight: 1, color: t.text, boxShadow: t.shadow, whiteSpace: 'nowrap' }}>{cur.name}!</div>
+            <button onClick={learn}
+              style={{ background: t.accent, color: t.text, border: t.outline === 'none' ? 'none' : t.outline,
+                borderRadius: 36, padding: '14px 24px', fontSize: fontSize + 4, fontWeight: 900, cursor: 'pointer',
+                fontFamily: 'inherit', boxShadow: t.shadow, display: 'flex', alignItems: 'center', gap: 10, height: 64 }}>
+              <span style={{ fontSize: 30, lineHeight: 1 }}>🔊</span>들어보기
+            </button>
+            <div style={{ display: 'flex', gap: 10 }}>
+              {cur.examples.map((e, i) => (<span key={i} style={{ fontSize: 48, lineHeight: 1 }}>{e}</span>))}
+            </div>
+          </div>
+        </div>
+        <NavBtn dir="right" tone={t} onClick={next} />
+      </div>
+    </div>
+  );
+}
+
+function ShapeLearnActivity(p) {
+  return (
+    <BrowseActivity {...p} color={p.tone.cat.shape} icon="▲" title="도형 배우기" items={SHAPES} speak={speakKo}
+      renderBig={(s, t, color) => <ShapeGlyph shape={s} size={240} fill={color} stroke={t.text} strokeWidth={8} />} />
+  );
+}
+function ColorLearnActivity(p) {
+  return (
+    <BrowseActivity {...p} color={p.tone.cat.shape} icon="🌈" title="색깔 배우기" items={COLORS} speak={speakKo}
+      renderBig={(c, t) => <div style={{ width: 240, height: 240, borderRadius: 32, background: c.hex, border: `4px solid ${t.text}` }} />} />
+  );
+}
