@@ -7,7 +7,7 @@ const KIDS_CATEGORIES = [
   { id: 'hangul',  name: '한글',     emoji: '가',  iconKind: 'text', hasSub: true,  done: true },
   { id: 'english', name: '영어',     emoji: 'ABC', iconKind: 'text', hasSub: true,  done: true },
   { id: 'math',    name: '수학',     emoji: '123', iconKind: 'text', hasSub: true,  done: true },
-  { id: 'shape',   name: '도형',     emoji: '◆●▲', iconKind: 'text', hasSub: false, done: false },
+  { id: 'shape',   name: '도형',     emoji: '◆●▲', iconKind: 'text', hasSub: true,  done: true },
   { id: 'music',   name: '음악',     emoji: '🎵',  hasSub: true,  done: true },
   { id: 'code',    name: '코딩',     emoji: '🤖',  hasSub: false, done: true },
   { id: 'brain',   name: '두뇌',     emoji: '🧩',  hasSub: true,  done: true },

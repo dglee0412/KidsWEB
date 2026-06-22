@@ -748,6 +748,17 @@ const SUBMENUS = {
       { id: 'sentence', name: '글짓기',     emoji: '✍️', sub: 'Lv.3' },
     ],
   },
+  shape: {
+    title: '도형이랑 색깔 놀이',
+    items: [
+      { id: 'shape-learn', name: '도형 배우기', emoji: '▲',  sub: '9종' },
+      { id: 'shape-find',  name: '도형 찾기',   emoji: '🔍', sub: 'Lv.3' },
+      { id: 'shape-match', name: '도형 맞추기', emoji: '🧩', sub: 'Lv.3' },
+      { id: 'color-learn', name: '색깔 배우기', emoji: '🌈', sub: '10색' },
+      { id: 'color-sort',  name: '색깔 분류',   emoji: '🗂️', sub: 'Lv.3' },
+      { id: 'shape-draw',  name: '도형 그리기', emoji: '🖍️', sub: '🎨' },
+    ],
+  },
 };
 
 function SubmenuScreen({ tone, cat, fontSize, onPick, mascotOn }) {

@@ -6,6 +6,7 @@ import React from 'react'
 import { VoiceGuide, PlaceholderScreen } from './shell.jsx'
 import { playSfx, playTone, playDrum, playToolVoice, startDraw, drawTick, stopDraw, speakKo } from './lib/audio.js'
 import { EnglishActivity } from './english.jsx'
+import { ShapeActivity } from './shape.jsx'
 
 const { useState: useStateA, useEffect: useEffectA, useRef: useRefA, useMemo: useMemoA, useCallback: useCallbackA } = React;
 
@@ -5100,6 +5101,10 @@ function Activity({ tone, cat, sub, fontSize, onComplete, onFinish, voiceShow })
     if (sub?.id === 'pattern') return <PatternActivity tone={tone} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
     if (sub?.id === 'shadow')  return <ShadowActivity  tone={tone} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
     return <MemoryActivity tone={tone} subId={sub?.id || 'memory'} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
+  }
+  if (cat.id === 'shape') {
+    if (sub?.id === 'shape-draw') return <FreeColoringActivity tone={tone} subId="circle" fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
+    return <ShapeActivity tone={tone} subId={sub?.id || 'shape-learn'} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
   }
   if (cat.id === 'english') return <EnglishActivity tone={tone} subId={sub?.id || 'upper'} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
   if (cat.id === 'code')   return <CodingActivity   tone={tone} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;

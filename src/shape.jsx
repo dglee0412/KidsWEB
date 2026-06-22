@@ -361,3 +361,13 @@ function ColorSortActivity(p) {
       guideText={() => '같은 색 물건을 모두 골라봐'} />
   );
 }
+
+// 서브활동 라우터(shape-draw는 activities.jsx 디스패처가 FreeColoringActivity로 처리).
+export function ShapeActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow }) {
+  const p = { tone, fontSize, onComplete, onFinish, voiceShow };
+  if (subId === 'shape-find') return <ShapeFindActivity {...p} />;
+  if (subId === 'shape-match') return <ShapeMatchActivity {...p} />;
+  if (subId === 'color-learn') return <ColorLearnActivity {...p} />;
+  if (subId === 'color-sort') return <ColorSortActivity {...p} />;
+  return <ShapeLearnActivity {...p} />; // 'shape-learn' 기본
+}
