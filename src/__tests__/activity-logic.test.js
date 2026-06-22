@@ -148,6 +148,61 @@ describe('hangulWordLevelConfig(5레벨, 풀 클램프)', () => {
   })
 })
 
+import { sentenceText, isSentenceComplete, buildTray, HANGUL_SENTENCES } from '../activities.jsx'
+import { ENGLISH_SENTENCES } from '../english.jsx'
+
+describe('sentenceText', () => {
+  const parts = [{ type: 'slot', answer: '포도', emoji: '🍇' }, { type: 'fixed', text: '를 ' }, { type: 'slot', answer: '먹어요', emoji: '😋' }]
+  it('채운 슬롯은 단어, 빈칸은 기본 ⬜', () => {
+    expect(sentenceText(parts, [{ word: '포도', emoji: '🍇' }, null])).toBe('포도를 ⬜')
+  })
+  it('blank 인자로 음성용 빈 문자', () => {
+    expect(sentenceText(parts, [{ word: '포도', emoji: '🍇' }, null], '')).toBe('포도를 ')
+    expect(sentenceText(parts, [{ word: '포도', emoji: '🍇' }, { word: '먹어요', emoji: '😋' }], '')).toBe('포도를 먹어요')
+  })
+})
+
+describe('isSentenceComplete', () => {
+  const parts = [{ type: 'slot', answer: '포도', emoji: '🍇' }, { type: 'fixed', text: '를 ' }, { type: 'slot', answer: '먹어요', emoji: '😋' }]
+  it('모든 슬롯 정답이면 true', () => {
+    expect(isSentenceComplete(parts, [{ word: '포도' }, { word: '먹어요' }])).toBe(true)
+  })
+  it('빈칸/오답 있으면 false', () => {
+    expect(isSentenceComplete(parts, [{ word: '포도' }, null])).toBe(false)
+    expect(isSentenceComplete(parts, [{ word: '사과' }, { word: '먹어요' }])).toBe(false)
+  })
+})
+
+describe('buildTray', () => {
+  const distinct = (a) => new Set(a.map((c) => c.word)).size === a.length
+  const tpl = { parts: [{ type: 'slot', answer: '포도', emoji: '🍇' }, { type: 'fixed', text: '를 ' }, { type: 'slot', answer: '먹어요', emoji: '😋' }] }
+  const pool = [{ word: '포도', emoji: '🍇' }, { word: '먹어요', emoji: '😋' }, { word: '사과', emoji: '🍎' }, { word: '자요', emoji: '😴' }, { word: '우유', emoji: '🥛' }]
+  it('정답 전부 포함 + 고유 + 길이=정답수+min(distN,남은풀)', () => {
+    const tray = buildTray(tpl, pool, 2)
+    expect(tray).toHaveLength(2 + 2)
+    expect(distinct(tray)).toBe(true)
+    expect(tray.map((c) => c.word)).toContain('포도')
+    expect(tray.map((c) => c.word)).toContain('먹어요')
+  })
+})
+
+describe('문장 데이터 적합성', () => {
+  const slotCount = (tpl) => tpl.parts.filter((p) => p.type === 'slot').length
+  for (const [name, levels] of [['hangul', HANGUL_SENTENCES], ['english', ENGLISH_SENTENCES]]) {
+    it(`${name}: 3레벨, 각 ≥4문장, 슬롯수 L1=1·L2=2·L3∈{2,3}, 모든 슬롯 answer+emoji`, () => {
+      expect(levels).toHaveLength(3)
+      levels.forEach((lvl) => expect(lvl.length).toBeGreaterThanOrEqual(4))
+      levels[0].forEach((tpl) => expect(slotCount(tpl)).toBe(1))
+      levels[1].forEach((tpl) => expect(slotCount(tpl)).toBe(2))
+      levels[2].forEach((tpl) => expect([2, 3]).toContain(slotCount(tpl)))
+      levels.flat().forEach((tpl) => tpl.parts.forEach((p) => {
+        if (p.type === 'slot') { expect(typeof p.answer).toBe('string'); expect(p.emoji.length).toBeGreaterThan(0) }
+        else { expect(typeof p.text).toBe('string') }
+      }))
+    })
+  }
+})
+
 import { wordsByTheme, HANGUL_WORDS, WORD_THEMES } from '../activities.jsx'
 import { WORD_SET } from '../english.jsx'
 

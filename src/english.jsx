@@ -1,7 +1,7 @@
 // 영어놀이 카테고리 — 데이터 + 순수 함수 + 6활동 + 라우터.
 import React from 'react'
 import { VoiceGuide } from './shell.jsx'
-import { LevelStepper, useMultiPick, multiTargetOptions, PickMark, WordMatchActivity, WORD_THEMES } from './activities.jsx'
+import { LevelStepper, useMultiPick, multiTargetOptions, PickMark, WordMatchActivity, WORD_THEMES, SentenceBuilderActivity } from './activities.jsx'
 import { playSfx, speakEn } from './lib/audio.js'
 
 const { useState: useS, useEffect: useE, useRef: useR } = React;
@@ -58,6 +58,28 @@ export const WORD_SET = [
   { word: 'ball', emoji: '⚽', theme: 'object' }, { word: 'book', emoji: '📖', theme: 'object' },
   { word: 'clock', emoji: '🕐', theme: 'object' }, { word: 'key', emoji: '🔑', theme: 'object' },
   { word: 'gift', emoji: '🎁', theme: 'object' }, { word: 'umbrella', emoji: '☂️', theme: 'object' },
+];
+
+// 영어 문장 (Lv1 빈칸1 / Lv2 빈칸2 / Lv3 빈칸2).
+export const ENGLISH_SENTENCES = [
+  [
+    { parts: [{ type: 'fixed', text: 'I see a ' }, { type: 'slot', answer: 'cat', emoji: '🐱' }] },
+    { parts: [{ type: 'fixed', text: 'The ' }, { type: 'slot', answer: 'sun', emoji: '☀️' }, { type: 'fixed', text: ' is up' }] },
+    { parts: [{ type: 'fixed', text: 'A ' }, { type: 'slot', answer: 'dog', emoji: '🐶' }, { type: 'fixed', text: ' runs' }] },
+    { parts: [{ type: 'fixed', text: 'I like ' }, { type: 'slot', answer: 'milk', emoji: '🥛' }] },
+  ],
+  [
+    { parts: [{ type: 'fixed', text: 'The ' }, { type: 'slot', answer: 'cat', emoji: '🐱' }, { type: 'fixed', text: ' is ' }, { type: 'slot', answer: 'sleeping', emoji: '😴' }] },
+    { parts: [{ type: 'fixed', text: 'I ' }, { type: 'slot', answer: 'eat', emoji: '😋' }, { type: 'fixed', text: ' an ' }, { type: 'slot', answer: 'apple', emoji: '🍎' }] },
+    { parts: [{ type: 'fixed', text: 'A ' }, { type: 'slot', answer: 'bird', emoji: '🐦' }, { type: 'fixed', text: ' can ' }, { type: 'slot', answer: 'sing', emoji: '🎤' }] },
+    { parts: [{ type: 'fixed', text: 'The ' }, { type: 'slot', answer: 'boy', emoji: '🧒' }, { type: 'fixed', text: ' is ' }, { type: 'slot', answer: 'happy', emoji: '😄' }] },
+  ],
+  [
+    { parts: [{ type: 'fixed', text: 'The ' }, { type: 'slot', answer: 'dog', emoji: '🐶' }, { type: 'fixed', text: ' runs to the ' }, { type: 'slot', answer: 'park', emoji: '🏞️' }] },
+    { parts: [{ type: 'fixed', text: 'I ' }, { type: 'slot', answer: 'read', emoji: '📖' }, { type: 'fixed', text: ' a ' }, { type: 'slot', answer: 'book', emoji: '📚' }] },
+    { parts: [{ type: 'fixed', text: 'The ' }, { type: 'slot', answer: 'bird', emoji: '🐦' }, { type: 'fixed', text: ' sings a ' }, { type: 'slot', answer: 'song', emoji: '🎵' }] },
+    { parts: [{ type: 'fixed', text: 'We ' }, { type: 'slot', answer: 'eat', emoji: '😋' }, { type: 'fixed', text: ' some ' }, { type: 'slot', answer: 'cake', emoji: '🍰' }] },
+  ],
 ];
 
 const ENGLISH_LEVELS = [
@@ -294,6 +316,15 @@ function EnglishWordsActivity({ tone, fontSize, onComplete, onFinish, voiceShow 
   );
 }
 
+function EnglishSentenceActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
+  return (
+    <SentenceBuilderActivity
+      tone={tone} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow}
+      levels={ENGLISH_SENTENCES} color={tone.cat.english} icon="✍️" title="문장 만들기" speak={speakEn}
+    />
+  );
+}
+
 // 따라쓰기 — 큰 대문자 가이드 위에 그리기. 획 누적 길이가 임계치 넘으면 완료→다음 글자.
 function EnglishTraceActivity({ tone, fontSize, onComplete, voiceShow }) {
   const t = tone;
@@ -448,7 +479,8 @@ export function EnglishActivity({ tone, subId, fontSize, onComplete, onFinish, v
   if (subId === 'lower' || subId === 'upper') return <AlphabetActivity {...p} subId={subId} />;
   if (subId === 'trace')   return <EnglishTraceActivity {...p} />;
   if (subId === 'phonics') return <PhonicsActivity {...p} />;
-  if (subId === 'words')   return <EnglishWordsActivity {...p} />;
-  if (subId === 'song')    return <AbcSongActivity {...p} />;
+  if (subId === 'words')    return <EnglishWordsActivity {...p} />;
+  if (subId === 'song')     return <AbcSongActivity {...p} />;
+  if (subId === 'sentence') return <EnglishSentenceActivity {...p} />;
   return <AlphabetActivity {...p} subId="upper" />;
 }
