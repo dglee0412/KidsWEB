@@ -37,7 +37,7 @@ const COLORING_TEMPLATES = {
     parts: [{ id: 'shape', d: 'M 200 60 L 350 330 L 50 330 Z' }] },
   square:    { name: '네모', emoji: '■', viewBox: '0 0 400 400', category: 'shape',
     parts: [{ id: 'shape', d: 'M 70 70 L 330 70 L 330 330 L 70 330 Z' }] },
-  star:      { name: '별', emoji: '★', viewBox: '0 0 400 400', category: 'shape',
+  starShape: { name: '별', emoji: '★', viewBox: '0 0 400 400', category: 'shape',
     parts: [{ id: 'shape', d: 'M 200 50 L 238 160 L 354 160 L 260 228 L 296 338 L 200 270 L 104 338 L 140 228 L 46 160 L 162 160 Z' }] },
   heart:     { name: '하트', emoji: '♥', viewBox: '0 0 400 400', category: 'shape',
     parts: [{ id: 'shape', d: 'M 200 340 C 120 270 50 210 50 140 C 50 95 90 70 130 70 C 165 70 190 95 200 120 C 210 95 235 70 270 70 C 310 70 350 95 350 140 C 350 210 280 270 200 340 Z' }] },
@@ -332,7 +332,7 @@ const COLORING_TEMPLATES = {
       { id: 'rain-3', d: 'M 300 290 L 290 320' },
     ],
   },
-  starNature: {
+  star: {
     name: '별', emoji: '⭐', viewBox: '0 0 400 400', category: 'nature',
     parts: [
       { id: 'body',   d: 'M 200 40 L 240 150 L 360 150 L 260 220 L 300 340 L 200 270 L 100 340 L 140 220 L 40 150 L 160 150 Z' },
@@ -401,11 +401,11 @@ const COLORING_TEMPLATES = {
 };
 
 const COLORING_ORDER = [
-  'circle', 'triangle', 'square', 'star', 'heart', 'diamond', 'oval', 'trapezoid', 'pentagon',
+  'circle', 'triangle', 'square', 'starShape', 'heart', 'diamond', 'oval', 'trapezoid', 'pentagon',
   'cat', 'dog', 'rabbit', 'bear', 'fish', 'butterfly',
   'car', 'bus', 'rocket', 'ship', 'train', 'plane',
   'apple', 'banana', 'iceCream', 'cake', 'watermelon',
-  'sunflower', 'tree', 'cloud', 'starNature', 'moon',
+  'sunflower', 'tree', 'cloud', 'star', 'moon',
   'robot', 'ghost', 'monster',
 ];
 
