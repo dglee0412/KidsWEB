@@ -101,3 +101,127 @@ export function buildMessengerRound(level, levels) {
 export function buildRoleStepOptions(step) {
   return { tool: step.tool, options: shuffle([step.tool, ...step.distractors]) };
 }
+
+function MessengerActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
+  const t = tone;
+  const color = t.cat.social;
+  const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
+  const [levelIdx, setLevelIdx] = useStateA(0);
+  const [round, setRound] = useStateA(() => buildMessengerRound(0, MESSENGER_LEVELS));
+  const [chat, setChat] = useStateA([]);            // [{ who:'them'|'me', text?, emoji? }]
+  const [progress, setProgress] = useStateA(0);
+  const [done, setDone] = useStateA(false);
+  const mp = useMultiPick();
+  const timersRef = useRefA([]);
+  const addTimer = (id) => timersRef.current.push(id);
+  useEffectA(() => () => { timersRef.current.forEach((id) => clearTimeout(id)); }, []);
+
+  const startRound = (lvl) => {
+    const r = buildMessengerRound(lvl, MESSENGER_LEVELS);
+    setRound(r); setChat([{ who: 'them', text: r.ask }]);
+    addTimer(setTimeout(() => speakKo(r.ask), 300));
+  };
+  useEffectA(() => {
+    timersRef.current.forEach((id) => clearTimeout(id)); timersRef.current = [];
+    setProgress(0); setDone(false); mp.reset(); startRound(levelIdx);
+  }, [levelIdx]);
+
+  const onPick = (emoji) => {
+    if (done) return;
+    const res = mp.pick(emoji, [round.answer]);
+    if (res === 'wrong') playSfx('wrong');
+    else if (res === 'complete') {
+      playSfx('correct');
+      setChat((c) => [...c, { who: 'me', emoji }, { who: 'them', emoji: '😊' }]);
+      addTimer(setTimeout(() => speakKo('좋아!'), 250));
+      onComplete && onComplete(1);
+      const n = progress + 1; setProgress(n);
+      addTimer(setTimeout(() => {
+        if (n >= MESSENGER_QUESTIONS) { setDone(true); onComplete && onComplete(3); }
+        else { timersRef.current.forEach((id) => clearTimeout(id)); timersRef.current = []; mp.reset(); startRound(levelIdx); }
+      }, 1200));
+    }
+  };
+  const restart = () => { setProgress(0); setDone(false); mp.reset(); startRound(levelIdx); };
+  const nextLevel = () => { if (levelIdx < MESSENGER_LEVELS.length - 1) setLevelIdx(levelIdx + 1); else onFinish && onFinish(); };
+  const prevLevel = () => { if (levelIdx > 0) setLevelIdx(levelIdx - 1); };
+
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', position: 'relative' }}>
+      <div style={{ height: 88, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
+        <div style={{ fontSize: fontSize + 14, fontWeight: 900, color: t.text, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 36 }}>💬</span>메신저 놀이
+          <span style={{ fontSize: fontSize - 2, fontWeight: 900, background: t.accent, color: t.text,
+            padding: '4px 14px', borderRadius: 16, border: t.outline === 'none' ? 'none' : t.outline, marginLeft: 6 }}>Lv.{levelIdx + 1}</span>
+        </div>
+        <LevelStepper tone={t} cur={levelIdx} total={MESSENGER_LEVELS.length} onPrev={prevLevel} onNext={nextLevel} />
+      </div>
+
+      {!done ? (
+        <React.Fragment>
+          {/* 채팅 말풍선 */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12, padding: '8px 36px', overflow: 'auto', minHeight: 0 }}>
+            {chat.map((m, i) => {
+              const me = m.who === 'me';
+              return (
+                <div key={i} style={{ display: 'flex', justifyContent: me ? 'flex-end' : 'flex-start' }}>
+                  <div style={{ maxWidth: '70%', background: me ? color : '#fff', color: me ? t.textOnColor : t.text,
+                    border: me ? (t.outline === 'none' ? 'none' : t.outline) : accentBorder, borderRadius: 24,
+                    padding: m.emoji ? '10px 16px' : '14px 20px', fontSize: m.emoji ? 48 : fontSize + 4, fontWeight: 900, boxShadow: t.shadowSm }}>
+                    {m.emoji || m.text}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 보기 이모티콘 */}
+          <div style={{ flex: '0 0 auto', padding: '10px 32px 4px', display: 'grid', gridTemplateColumns: `repeat(${round.options.length}, 1fr)`, gap: 14 }}>
+            {round.options.map((emoji) => {
+              const isRight = mp.found.includes(emoji);
+              const isWrong = mp.wrongKey === emoji;
+              return (
+                <button key={emoji} onClick={() => onPick(emoji)} disabled={isRight}
+                  onPointerDown={(e) => !isRight && e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.92)' }], { duration: 130 })}
+                  style={{ position: 'relative', height: 96, fontSize: 52, fontFamily: 'inherit', cursor: isRight ? 'default' : 'pointer',
+                    background: isRight ? t.cat.code : '#fff', border: t.outline === 'none' ? `4px solid ${t.text}` : t.outline,
+                    borderRadius: t.cardRadius, boxShadow: t.shadow, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    animation: isWrong ? 'kw-shake 0.4s ease' : 'none' }}>
+                  {emoji}
+                  {isRight && <PickMark kind="right" />}
+                  {isWrong && <PickMark kind="wrong" />}
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={{ flex: '0 0 auto', padding: '12px 32px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ flex: 1, display: 'flex', gap: 10 }}>
+              {Array.from({ length: MESSENGER_QUESTIONS }).map((_, i) => (
+                <span key={i} style={{ width: 20, height: 20, borderRadius: 10, background: i < progress ? color : '#fff',
+                  border: i < progress ? 'none' : `2px solid rgba(0,0,0,0.18)` }} />
+              ))}
+            </div>
+            <div style={{ fontSize: fontSize, fontWeight: 900, color: t.text }}>{progress}/{MESSENGER_QUESTIONS}</div>
+          </div>
+        </React.Fragment>
+      ) : (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18 }}>
+          <div style={{ fontSize: 140, animation: 'kw-pop 0.6s cubic-bezier(.34,1.56,.64,1) both' }}>🎉</div>
+          <div style={{ fontSize: fontSize + 22, fontWeight: 900, color: t.text }}>{levelIdx < MESSENGER_LEVELS.length - 1 ? `Lv.${levelIdx + 1} 성공!` : '모든 레벨 성공!'}</div>
+          <div style={{ display: 'flex', gap: 14 }}>
+            <button onClick={restart} style={{ background: '#fff', color: t.text, border: accentBorder, borderRadius: 28,
+              padding: '16px 28px', fontSize: fontSize + 2, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadowSm }}>🔄 다시</button>
+            <button onClick={nextLevel}
+              style={{ background: color, color: t.textOnColor, border: t.outline === 'none' ? 'none' : t.outline, borderRadius: 28,
+                padding: '16px 30px', fontSize: fontSize + 2, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadow }}>
+              {levelIdx < MESSENGER_LEVELS.length - 1 ? '다음 레벨 ▶' : '끝내기 🎀'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <VoiceGuide tone={t} show={voiceShow} text={done ? '잘했어!' : '알맞은 답을 골라봐'} fontSize={fontSize - 4} />
+    </div>
+  );
+}
