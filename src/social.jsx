@@ -128,6 +128,7 @@ function MessengerActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) 
 
   const onPick = (emoji) => {
     if (done) return;
+    const lvl = levelIdx;
     const res = mp.pick(emoji, [round.answer]);
     if (res === 'wrong') playSfx('wrong');
     else if (res === 'complete') {
@@ -138,7 +139,7 @@ function MessengerActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) 
       const n = progress + 1; setProgress(n);
       addTimer(setTimeout(() => {
         if (n >= MESSENGER_QUESTIONS) { setDone(true); onComplete && onComplete(3); }
-        else { timersRef.current.forEach((id) => clearTimeout(id)); timersRef.current = []; mp.reset(); startRound(levelIdx); }
+        else { timersRef.current.forEach((id) => clearTimeout(id)); timersRef.current = []; mp.reset(); startRound(lvl); }
       }, 1200));
     }
   };
