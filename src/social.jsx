@@ -226,3 +226,119 @@ function MessengerActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) 
     </div>
   );
 }
+
+function RoleplayActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
+  const t = tone;
+  const color = t.cat.social;
+  const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
+  const [jobIdx, setJobIdx] = useStateA(0);
+  const [stepIdx, setStepIdx] = useStateA(0);
+  const job = ROLES[jobIdx];
+  const step = job.steps[stepIdx];
+  const [round, setRound] = useStateA(() => buildRoleStepOptions(ROLES[0].steps[0]));
+  const [done, setDone] = useStateA(false);
+  const mp = useMultiPick();
+  const timersRef = useRefA([]);
+  const addTimer = (id) => timersRef.current.push(id);
+  useEffectA(() => () => { timersRef.current.forEach((id) => clearTimeout(id)); }, []);
+
+  const startStep = (ji, si) => {
+    const s = ROLES[ji].steps[si];
+    setRound(buildRoleStepOptions(s)); mp.reset();
+    addTimer(setTimeout(() => speakKo(s.prompt), 300));
+  };
+  useEffectA(() => {
+    timersRef.current.forEach((id) => clearTimeout(id)); timersRef.current = [];
+    setStepIdx(0); setDone(false); startStep(jobIdx, 0);
+  }, [jobIdx]);
+
+  const onPick = (emoji) => {
+    if (done) return;
+    const res = mp.pick(emoji, [round.tool]);
+    if (res === 'wrong') playSfx('wrong');
+    else if (res === 'complete') {
+      playSfx('correct'); onComplete && onComplete(1);
+      const last = stepIdx >= job.steps.length - 1;
+      addTimer(setTimeout(() => {
+        if (last) { setDone(true); onComplete && onComplete(3); }
+        else { const ns = stepIdx + 1; setStepIdx(ns); startStep(jobIdx, ns); }
+      }, 700));
+    }
+  };
+  const restart = () => { setStepIdx(0); setDone(false); startStep(jobIdx, 0); };
+  const nextJob = () => { if (jobIdx < ROLES.length - 1) setJobIdx(jobIdx + 1); else onFinish && onFinish(); };
+  const prevJob = () => { if (jobIdx > 0) setJobIdx(jobIdx - 1); };
+
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', position: 'relative' }}>
+      <div style={{ height: 88, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
+        <div style={{ fontSize: fontSize + 14, fontWeight: 900, color: t.text, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 36 }}>{job.emoji}</span>{job.name} 놀이
+        </div>
+        <LevelStepper tone={t} cur={jobIdx} total={ROLES.length} onPrev={prevJob} onNext={nextJob} />
+      </div>
+
+      {!done ? (
+        <React.Fragment>
+          {/* 안내 — 직업 + 현재 할 일 */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, minHeight: 0, padding: '0 32px' }}>
+            <div style={{ fontSize: 130, lineHeight: 1 }}>{job.emoji}</div>
+            <button onClick={() => speakKo(step.prompt)}
+              style={{ display: 'flex', alignItems: 'center', gap: 14, background: '#fff', border: accentBorder,
+                borderRadius: 28, padding: '16px 30px', boxShadow: t.shadow, cursor: 'pointer', fontFamily: 'inherit' }}>
+              <span style={{ fontSize: 28 }}>🔊</span>
+              <span style={{ fontSize: fontSize + 20, fontWeight: 900, color: t.text }}>{step.prompt}</span>
+            </button>
+          </div>
+
+          {/* 도구 보기 */}
+          <div style={{ flex: '0 0 auto', padding: '10px 32px 4px', display: 'grid', gridTemplateColumns: `repeat(${round.options.length}, 1fr)`, gap: 14 }}>
+            {round.options.map((emoji) => {
+              const isRight = mp.found.includes(emoji);
+              const isWrong = mp.wrongKey === emoji;
+              return (
+                <button key={emoji} onClick={() => onPick(emoji)} disabled={isRight}
+                  onPointerDown={(e) => !isRight && e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.92)' }], { duration: 130 })}
+                  style={{ position: 'relative', height: 104, fontSize: 56, fontFamily: 'inherit', cursor: isRight ? 'default' : 'pointer',
+                    background: isRight ? t.cat.code : '#fff', border: t.outline === 'none' ? `4px solid ${t.text}` : t.outline,
+                    borderRadius: t.cardRadius, boxShadow: t.shadow, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    animation: isWrong ? 'kw-shake 0.4s ease' : 'none' }}>
+                  {emoji}
+                  {isRight && <PickMark kind="right" />}
+                  {isWrong && <PickMark kind="wrong" />}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* 스텝 진행 */}
+          <div style={{ flex: '0 0 auto', padding: '12px 32px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ flex: 1, display: 'flex', gap: 10 }}>
+              {job.steps.map((_, i) => (
+                <span key={i} style={{ width: 20, height: 20, borderRadius: 10, background: i < stepIdx ? color : i === stepIdx ? t.accent : '#fff',
+                  border: i <= stepIdx ? 'none' : `2px solid rgba(0,0,0,0.18)` }} />
+              ))}
+            </div>
+            <div style={{ fontSize: fontSize, fontWeight: 900, color: t.text }}>{stepIdx + 1}/{job.steps.length}</div>
+          </div>
+        </React.Fragment>
+      ) : (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18 }}>
+          <div style={{ fontSize: 140, animation: 'kw-pop 0.6s cubic-bezier(.34,1.56,.64,1) both' }}>🎉</div>
+          <div style={{ fontSize: fontSize + 22, fontWeight: 900, color: t.text }}>{job.name} 완수!</div>
+          <div style={{ display: 'flex', gap: 14 }}>
+            <button onClick={restart} style={{ background: '#fff', color: t.text, border: accentBorder, borderRadius: 28,
+              padding: '16px 28px', fontSize: fontSize + 2, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadowSm }}>🔄 다시</button>
+            <button onClick={nextJob}
+              style={{ background: color, color: t.textOnColor, border: t.outline === 'none' ? 'none' : t.outline, borderRadius: 28,
+                padding: '16px 30px', fontSize: fontSize + 2, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadow }}>
+              {jobIdx < ROLES.length - 1 ? '다음 직업 ▶' : '끝내기 🎀'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <VoiceGuide tone={t} show={voiceShow} text={done ? '잘했어!' : '알맞은 도구를 골라봐'} fontSize={fontSize - 4} />
+    </div>
+  );
+}
