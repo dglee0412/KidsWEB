@@ -36,8 +36,7 @@ export const MOUSE_TASKS = [
 export function pickTypingTarget(keys, prev) {
   if (!keys.length) return null;
   if (keys.length === 1) return keys[0];
-  let k = keys[Math.floor(Math.random() * keys.length)];
-  let guard = 0;
-  while (k === prev && guard < 20) { k = keys[Math.floor(Math.random() * keys.length)]; guard += 1; }
-  return k;
+  const candidates = keys.filter((k) => k !== prev);
+  const pool = candidates.length ? candidates : keys;
+  return pool[Math.floor(Math.random() * pool.length)];
 }
