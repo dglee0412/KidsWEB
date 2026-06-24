@@ -380,7 +380,7 @@ function MousePlayActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) 
   const onClickTarget = () => { if (task.id === 'click') repDone(); };
   // 더블클릭: 빠른 두 번 탭
   const onBoxTap = () => {
-    if (task.id !== 'double') return;
+    if (task.id !== 'double' || opened) return;
     const now = Date.now();
     if (now - lastTap.current < 450) { lastTap.current = 0; setOpened(true); playSfx('select'); setTimeout(repDone, 500); }
     else { lastTap.current = now; playSfx('select'); }
