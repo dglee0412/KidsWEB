@@ -759,6 +759,14 @@ const SUBMENUS = {
       { id: 'shape-draw',  name: '도형 그리기', emoji: '🖍️', sub: '🎨' },
     ],
   },
+  social: {
+    title: '놀이마을',
+    items: [
+      { id: 'messenger', name: '메신저 놀이', emoji: '💬',   sub: 'Lv.3' },
+      { id: 'roleplay',  name: '역할놀이',   emoji: '👩‍⚕️', sub: '6직업' },
+      { id: 'decorate',  name: '꾸미기',     emoji: '🎀',   sub: '🎨' },
+    ],
+  },
 };
 
 function SubmenuScreen({ tone, cat, fontSize, onPick, mascotOn }) {

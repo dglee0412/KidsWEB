@@ -482,3 +482,10 @@ function DecorateActivity({ tone, fontSize, onComplete, voiceShow }) {
     </div>
   );
 }
+
+export function SocialActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow }) {
+  const p = { tone, fontSize, onComplete, onFinish, voiceShow };
+  if (subId === 'roleplay') return <RoleplayActivity {...p} />;
+  if (subId === 'decorate') return <DecorateActivity {...p} />;
+  return <MessengerActivity {...p} />; // 'messenger' 기본
+}
