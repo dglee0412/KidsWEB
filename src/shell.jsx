@@ -767,6 +767,15 @@ const SUBMENUS = {
       { id: 'decorate',  name: '꾸미기',     emoji: '🎀',   sub: '🎨' },
     ],
   },
+  computer: {
+    title: '컴퓨터랑 친해지기',
+    items: [
+      { id: 'touch',    name: '터치 연습',   emoji: '👆',  sub: '탭·드래그' },
+      { id: 'mouse',    name: '마우스 놀이', emoji: '🖱️', sub: '커서' },
+      { id: 'keyboard', name: '가상 키보드', emoji: '⌨️',  sub: '한/영' },
+      { id: 'typing',   name: '타자 연습',   emoji: '🔤',  sub: 'Lv.3' },
+    ],
+  },
 };
 
 function SubmenuScreen({ tone, cat, fontSize, onPick, mascotOn }) {

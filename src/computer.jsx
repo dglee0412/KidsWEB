@@ -468,3 +468,11 @@ function MousePlayActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) 
     </div>
   );
 }
+
+export function ComputerActivity({ tone, subId, fontSize, onComplete, onFinish, voiceShow }) {
+  const p = { tone, fontSize, onComplete, onFinish, voiceShow };
+  if (subId === 'mouse') return <MousePlayActivity {...p} />;
+  if (subId === 'keyboard') return <KeyboardActivity {...p} mode="explore" />;
+  if (subId === 'typing') return <KeyboardActivity {...p} mode="type" />;
+  return <TouchTutorialActivity {...p} />; // 'touch' 기본
+}
