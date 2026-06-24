@@ -342,3 +342,143 @@ function RoleplayActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
     </div>
   );
 }
+
+function DecorateActivity({ tone, fontSize, onComplete, voiceShow }) {
+  const t = tone;
+  const color = t.cat.social;
+  const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
+  const stageRef = useRefA(null);
+  const [sceneIdx, setSceneIdx] = useStateA(0);
+  const [frameIdx, setFrameIdx] = useStateA(0);
+  const [placed, setPlaced] = useStateA([]);     // [{ id, emoji, x, y }] x,y = % (0~100)
+  const [drag, setDrag] = useStateA(null);        // { id }
+  const [saved, setSaved] = useStateA(false);
+  const idRef = useRefA(1);
+  const scene = SCENES[sceneIdx];
+  const frame = FRAMES[frameIdx];
+
+  const addSticker = (emoji) => {
+    const id = idRef.current++;
+    setPlaced((p) => [...p, { id, emoji, x: 50, y: 48 }]);
+    playSfx('select');
+  };
+  const pctFromEvent = (e) => {
+    const el = stageRef.current; if (!el) return { x: 50, y: 50 };
+    const r = el.getBoundingClientRect();
+    const x = Math.max(0, Math.min(100, ((e.clientX - r.left) / r.width) * 100));
+    const y = Math.max(0, Math.min(100, ((e.clientY - r.top) / r.height) * 100));
+    return { x, y };
+  };
+  const onStickerDown = (e, id) => {
+    e.stopPropagation();
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
+    setDrag({ id });
+  };
+  const onStickerMove = (e, id) => {
+    if (!drag || drag.id !== id) return;
+    e.stopPropagation();
+    const p = pctFromEvent(e);
+    setPlaced((arr) => arr.map((s) => (s.id === id ? { ...s, x: p.x, y: p.y } : s)));
+  };
+  const onStickerUp = (e, id) => {
+    if (!drag || drag.id !== id) return;
+    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
+    setDrag(null);
+  };
+  const clearAll = () => setPlaced([]);
+
+  const onSave = () => {
+    const W = 800, H = 600;
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, scene.c1); grad.addColorStop(1, scene.c2);
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    placed.forEach((s) => {
+      ctx.font = '72px serif';
+      ctx.fillText(s.emoji, (s.x / 100) * W, (s.y / 100) * H);
+    });
+    if (frame.width > 0) {
+      ctx.strokeStyle = frame.color; ctx.lineWidth = frame.width * 2;
+      ctx.strokeRect(frame.width, frame.width, W - frame.width * 2, H - frame.width * 2);
+    }
+    try {
+      const png = canvas.toDataURL('image/png');
+      const list = JSON.parse(localStorage.getItem('kw-gallery') || '[]');
+      list.unshift({ id: Date.now(), type: 'free', png, savedAt: new Date().toISOString() });
+      if (list.length > 24) list.length = 24;
+      localStorage.setItem('kw-gallery', JSON.stringify(list));
+    } catch {}
+    playSfx('star'); onComplete && onComplete(3);
+    setSaved(true); setTimeout(() => setSaved(false), 1400);
+  };
+
+  const frameBorder = frame.width > 0 ? `${frame.width}px solid ${frame.color}` : 'none';
+
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', position: 'relative' }}>
+      <div style={{ height: 88, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
+        <div style={{ fontSize: fontSize + 14, fontWeight: 900, color: t.text, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 36 }}>🎀</span>꾸미기
+        </div>
+        <button onClick={onSave} aria-label="저장"
+          onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.92)' }], { duration: 130 })}
+          style={{ position: 'absolute', top: 16, right: 130, width: 64, height: 64, borderRadius: 32,
+            background: '#fff', border: accentBorder, cursor: 'pointer', fontSize: 30, fontFamily: 'inherit', boxShadow: t.shadowSm, color: t.text }}>💾</button>
+      </div>
+
+      {/* 장면 + 프레임 선택 */}
+      <div style={{ flex: '0 0 auto', padding: '0 28px 8px', display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+        {SCENES.map((s, i) => (
+          <button key={s.id} onClick={() => setSceneIdx(i)}
+            style={{ height: 38, padding: '0 14px', borderRadius: 19, background: i === sceneIdx ? color : '#fff', color: i === sceneIdx ? t.textOnColor : t.text,
+              border: i === sceneIdx ? (t.outline === 'none' ? 'none' : t.outline) : accentBorder, fontSize: fontSize - 4, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit' }}>{s.name}</button>
+        ))}
+        {FRAMES.map((f, i) => (
+          <button key={f.id} onClick={() => setFrameIdx(i)} aria-label={`프레임 ${f.name}`}
+            style={{ width: 38, height: 38, borderRadius: 19, background: '#fff', cursor: 'pointer', fontFamily: 'inherit',
+              border: i === frameIdx ? `4px solid ${t.text}` : accentBorder, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ width: 20, height: 20, borderRadius: 6, border: f.width > 0 ? `4px solid ${f.color}` : `2px dashed ${t.textMuted}` }} />
+          </button>
+        ))}
+      </div>
+
+      {/* 꾸미기 무대 */}
+      <div style={{ flex: 1, padding: '0 28px', minHeight: 0, display: 'flex', justifyContent: 'center' }}>
+        <div ref={stageRef} style={{ position: 'relative', width: '100%', maxWidth: 720, aspectRatio: '4 / 3',
+          background: `linear-gradient(180deg, ${scene.c1}, ${scene.c2})`, borderRadius: 18, overflow: 'hidden',
+          border: frameBorder, boxShadow: t.shadow, touchAction: 'none' }}>
+          {placed.map((s) => (
+            <div key={s.id}
+              onPointerDown={(e) => onStickerDown(e, s.id)} onPointerMove={(e) => onStickerMove(e, s.id)}
+              onPointerUp={(e) => onStickerUp(e, s.id)} onPointerCancel={(e) => onStickerUp(e, s.id)}
+              style={{ position: 'absolute', left: `${s.x}%`, top: `${s.y}%`, transform: 'translate(-50%, -50%)',
+                fontSize: 56, lineHeight: 1, cursor: 'grab', touchAction: 'none', userSelect: 'none' }}>{s.emoji}</div>
+          ))}
+          {saved && (
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'rgba(255,255,255,0.6)', fontSize: fontSize + 12, fontWeight: 900, color: t.text }}>저장했어요! 🖼️</div>
+          )}
+        </div>
+      </div>
+
+      {/* 스티커 팔레트 + 지우기 */}
+      <div style={{ flex: '0 0 auto', padding: '10px 24px 16px', display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', alignItems: 'center' }}>
+        {DECORATE_STICKERS.map((emoji) => (
+          <button key={emoji} onClick={() => addSticker(emoji)}
+            onPointerDown={(e) => e.currentTarget.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.9)' }], { duration: 120 })}
+            style={{ width: 60, height: 60, borderRadius: t.cardRadius, background: '#fff', border: accentBorder,
+              fontSize: 34, lineHeight: 1, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadowSm,
+              display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{emoji}</button>
+        ))}
+        <button onClick={clearAll}
+          style={{ height: 60, padding: '0 18px', borderRadius: t.cardRadius, background: '#fff', border: accentBorder,
+            fontSize: fontSize - 2, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', color: t.text, boxShadow: t.shadowSm }}>🧽 지우기</button>
+      </div>
+
+      <VoiceGuide tone={t} show={voiceShow} text="스티커를 콕 누르고 끌어서 꾸며봐" fontSize={fontSize - 4} />
+    </div>
+  );
+}
