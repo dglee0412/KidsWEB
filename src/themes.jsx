@@ -12,7 +12,7 @@ const KIDS_CATEGORIES = [
   { id: 'code',    name: '코딩',     emoji: '🤖',  hasSub: false, done: true },
   { id: 'brain',   name: '두뇌',     emoji: '🧩',  hasSub: true,  done: true },
   { id: 'computer',name: '컴퓨터',   emoji: '💻',  hasSub: false, done: false },
-  { id: 'social',  name: '놀이마을',  emoji: '💬',  hasSub: false, done: false },
+  { id: 'social',  name: '놀이마을',  emoji: '💬',  hasSub: true,  done: true },
 ];
 
 // 톤 A — 밝은 원색 (Khan Academy Kids 풍, 고채도)
