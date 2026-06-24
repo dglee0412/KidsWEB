@@ -8,6 +8,7 @@ import { playSfx, playTone, playDrum, playToolVoice, startDraw, drawTick, stopDr
 import { EnglishActivity } from './english.jsx'
 import { ShapeActivity } from './shape.jsx'
 import { SocialActivity } from './social.jsx'
+import { ComputerActivity } from './computer.jsx'
 
 const { useState: useStateA, useEffect: useEffectA, useRef: useRefA, useMemo: useMemoA, useCallback: useCallbackA } = React;
 
@@ -5108,6 +5109,7 @@ function Activity({ tone, cat, sub, fontSize, onComplete, onFinish, voiceShow })
     return <ShapeActivity tone={tone} subId={sub?.id || 'shape-learn'} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
   }
   if (cat.id === 'social') return <SocialActivity tone={tone} subId={sub?.id || 'messenger'} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
+  if (cat.id === 'computer') return <ComputerActivity tone={tone} subId={sub?.id || 'touch'} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
   if (cat.id === 'english') return <EnglishActivity tone={tone} subId={sub?.id || 'upper'} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
   if (cat.id === 'code')   return <CodingActivity   tone={tone} fontSize={fontSize} onComplete={onComplete} onFinish={onFinish} voiceShow={voiceShow} />;
   return <PlaceholderScreen tone={tone} cat={cat} fontSize={fontSize} />;

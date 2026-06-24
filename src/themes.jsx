@@ -11,7 +11,7 @@ const KIDS_CATEGORIES = [
   { id: 'music',   name: '음악',     emoji: '🎵',  hasSub: true,  done: true },
   { id: 'code',    name: '코딩',     emoji: '🤖',  hasSub: false, done: true },
   { id: 'brain',   name: '두뇌',     emoji: '🧩',  hasSub: true,  done: true },
-  { id: 'computer',name: '컴퓨터',   emoji: '💻',  hasSub: false, done: false },
+  { id: 'computer',name: '컴퓨터',   emoji: '💻',  hasSub: true,  done: true },
   { id: 'social',  name: '놀이마을',  emoji: '💬',  hasSub: true,  done: true },
 ];
 
