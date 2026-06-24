@@ -333,3 +333,138 @@ function TouchTutorialActivity({ tone, fontSize, onComplete, onFinish, voiceShow
     </div>
   );
 }
+
+// 마우스 놀이 — 가상 커서 + 클릭/더블클릭/드래그
+function MousePlayActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
+  const t = tone;
+  const color = t.cat.computer;
+  const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
+  const stageRef = useRefA(null);
+  const [ti, setTi] = useStateA(0);
+  const task = MOUSE_TASKS[ti];
+  const [progress, setProgress] = useStateA(0);
+  const [done, setDone] = useStateA(false);
+  const [cursor, setCursor] = useStateA({ x: 50, y: 60 });
+  const [targetPos, setTargetPos] = useStateA({ x: 50, y: 40 });
+  const [opened, setOpened] = useStateA(false);   // double: 상자 열림
+  const [dragging, setDragging] = useStateA(false);
+  const lastTap = useRefA(0);
+
+  const pct = (e) => {
+    const el = stageRef.current; if (!el) return { x: 50, y: 50 };
+    const r = el.getBoundingClientRect();
+    return { x: Math.max(0, Math.min(100, ((e.clientX - r.left) / r.width) * 100)),
+             y: Math.max(0, Math.min(100, ((e.clientY - r.top) / r.height) * 100)) };
+  };
+  const setupTask = (idx) => {
+    setProgress(0); setOpened(false); setDragging(false);
+    setTargetPos({ x: rand(25, 75), y: rand(22, 55) });
+    speakKo(MOUSE_TASKS[idx].prompt);
+  };
+  useEffectA(() => { setupTask(ti); }, [ti]);
+
+  const onStageMove = (e) => { const p = pct(e); setCursor({ x: p.x, y: Math.max(0, p.y - 6) }); };
+
+  const finishTask = () => {
+    if (ti >= MOUSE_TASKS.length - 1) { setDone(true); onComplete && onComplete(3); }
+    else setTi(ti + 1);
+  };
+  const repDone = () => {
+    playSfx('correct'); onComplete && onComplete(1);
+    const np = progress + 1;
+    if (np >= task.count) finishTask();
+    else { setProgress(np); setOpened(false); setTargetPos({ x: rand(25, 75), y: rand(22, 55) }); }
+  };
+
+  // 클릭: 별 탭
+  const onClickTarget = () => { if (task.id === 'click') repDone(); };
+  // 더블클릭: 빠른 두 번 탭
+  const onBoxTap = () => {
+    if (task.id !== 'double') return;
+    const now = Date.now();
+    if (now - lastTap.current < 450) { lastTap.current = 0; setOpened(true); playSfx('select'); setTimeout(repDone, 500); }
+    else { lastTap.current = now; playSfx('select'); }
+  };
+  // 드래그: 선물을 상자로 (상자는 우하단 고정, 선물 targetPos 이동)
+  const giftDown = (e) => { if (task.id !== 'drag') return; e.stopPropagation(); try { e.currentTarget.setPointerCapture(e.pointerId); } catch {} setDragging(true); };
+  const giftMove = (e) => { if (task.id !== 'drag' || !dragging) return; setTargetPos(pct(e)); };
+  const giftUp = (e) => {
+    if (task.id !== 'drag' || !dragging) return;
+    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
+    setDragging(false);
+    const p = pct(e);
+    if (p.x > 66 && p.y > 58) repDone();
+    else setTargetPos({ x: rand(25, 60), y: rand(22, 50) });
+  };
+
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', position: 'relative' }}>
+      <div style={{ height: 88, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
+        <div style={{ fontSize: fontSize + 14, fontWeight: 900, color: t.text, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 36 }}>🖱️</span>마우스 놀이
+          <span style={{ fontSize: fontSize - 2, fontWeight: 900, background: t.accent, color: t.text,
+            padding: '4px 14px', borderRadius: 16, border: t.outline === 'none' ? 'none' : t.outline, marginLeft: 6 }}>{task.name}</span>
+        </div>
+      </div>
+
+      {!done ? (
+        <React.Fragment>
+          <button onClick={() => speakKo(task.prompt)}
+            style={{ flex: '0 0 auto', alignSelf: 'center', margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: 10,
+              background: '#fff', border: accentBorder, borderRadius: 24, padding: '10px 22px', boxShadow: t.shadowSm, cursor: 'pointer', fontFamily: 'inherit' }}>
+            <span style={{ fontSize: 24 }}>🔊</span><span style={{ fontSize: fontSize + 4, fontWeight: 900, color: t.text }}>{task.prompt}</span>
+          </button>
+
+          <div ref={stageRef} onPointerMove={onStageMove}
+            style={{ flex: 1, position: 'relative', margin: '0 28px 14px', borderRadius: 18,
+              background: t.surfaceAlt || '#FAFAFA', border: accentBorder, overflow: 'hidden', touchAction: 'none', minHeight: 0, cursor: 'none' }}>
+            {/* 클릭 타겟 */}
+            {task.id === 'click' && (
+              <button onClick={onClickTarget}
+                style={{ position: 'absolute', left: `${targetPos.x}%`, top: `${targetPos.y}%`, transform: 'translate(-50%, -50%)',
+                  fontSize: 80, lineHeight: 1, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>{task.emoji}</button>
+            )}
+            {/* 더블클릭 상자 */}
+            {task.id === 'double' && (
+              <button onClick={onBoxTap}
+                style={{ position: 'absolute', left: `${targetPos.x}%`, top: `${targetPos.y}%`, transform: 'translate(-50%, -50%)',
+                  fontSize: 88, lineHeight: 1, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>{opened ? task.open : task.emoji}</button>
+            )}
+            {/* 드래그: 선물 + 상자 */}
+            {task.id === 'drag' && (
+              <React.Fragment>
+                <div style={{ position: 'absolute', right: '6%', bottom: '6%', fontSize: 96, lineHeight: 1 }}>{task.target}</div>
+                <div onPointerDown={giftDown} onPointerMove={giftMove} onPointerUp={giftUp} onPointerCancel={giftUp}
+                  style={{ position: 'absolute', left: `${targetPos.x}%`, top: `${targetPos.y}%`, transform: 'translate(-50%, -50%)',
+                    fontSize: 72, lineHeight: 1, cursor: 'grab', touchAction: 'none', userSelect: 'none' }}>{task.emoji}</div>
+              </React.Fragment>
+            )}
+            {/* 가상 커서 */}
+            <div style={{ position: 'absolute', left: `${cursor.x}%`, top: `${cursor.y}%`, transform: 'translate(-30%, -20%)',
+              fontSize: 44, lineHeight: 1, pointerEvents: 'none', zIndex: 50, filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.3))' }}>🖱️</div>
+          </div>
+
+          <div style={{ flex: '0 0 auto', padding: '0 32px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ flex: 1, display: 'flex', gap: 10 }}>
+              {MOUSE_TASKS.map((_, i) => (
+                <span key={i} style={{ flex: 1, height: 12, borderRadius: 6, background: i < ti ? color : i === ti ? t.accent : '#fff',
+                  border: i <= ti ? 'none' : `2px solid rgba(0,0,0,0.18)` }} />
+              ))}
+            </div>
+            <div style={{ fontSize: fontSize, fontWeight: 900, color: t.text }}>{progress}/{task.count}</div>
+          </div>
+        </React.Fragment>
+      ) : (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18 }}>
+          <div style={{ fontSize: 140, animation: 'kw-pop 0.6s cubic-bezier(.34,1.56,.64,1) both' }}>🎉</div>
+          <div style={{ fontSize: fontSize + 22, fontWeight: 900, color: t.text }}>다 했어요!</div>
+          <button onClick={() => { setTi(0); setDone(false); }}
+            style={{ background: color, color: t.textOnColor, border: t.outline === 'none' ? 'none' : t.outline, borderRadius: 28,
+              padding: '16px 30px', fontSize: fontSize + 2, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadow }}>🔄 다시</button>
+        </div>
+      )}
+
+      <VoiceGuide tone={t} show={voiceShow} text={done ? '잘했어!' : task.prompt} fontSize={fontSize - 4} />
+    </div>
+  );
+}
