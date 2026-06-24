@@ -404,15 +404,18 @@ function DecorateActivity({ tone, fontSize, onComplete, voiceShow }) {
       ctx.strokeStyle = frame.color; ctx.lineWidth = frame.width * 2;
       ctx.strokeRect(frame.width, frame.width, W - frame.width * 2, H - frame.width * 2);
     }
+    let ok = false;
     try {
       const png = canvas.toDataURL('image/png');
       const list = JSON.parse(localStorage.getItem('kw-gallery') || '[]');
       list.unshift({ id: Date.now(), type: 'free', png, savedAt: new Date().toISOString() });
       if (list.length > 24) list.length = 24;
       localStorage.setItem('kw-gallery', JSON.stringify(list));
+      ok = true;
     } catch {}
-    playSfx('star'); onComplete && onComplete(3);
-    setSaved(true); setTimeout(() => setSaved(false), 1400);
+    if (ok) { playSfx('star'); onComplete && onComplete(3); setSaved('저장했어요! 🖼️'); }
+    else { playSfx('wrong'); setSaved('저장 공간이 가득찼어요 😢'); }
+    setTimeout(() => setSaved(false), 1400);
   };
 
   const frameBorder = frame.width > 0 ? `${frame.width}px solid ${frame.color}` : 'none';
@@ -459,7 +462,7 @@ function DecorateActivity({ tone, fontSize, onComplete, voiceShow }) {
           ))}
           {saved && (
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'rgba(255,255,255,0.6)', fontSize: fontSize + 12, fontWeight: 900, color: t.text }}>저장했어요! 🖼️</div>
+              background: 'rgba(255,255,255,0.6)', fontSize: fontSize + 12, fontWeight: 900, color: t.text }}>{saved}</div>
           )}
         </div>
       </div>
