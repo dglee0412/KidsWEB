@@ -184,3 +184,152 @@ function KeyboardActivity({ tone, fontSize, onComplete, onFinish, voiceShow, mod
     </div>
   );
 }
+
+function rand(min, max) { return min + Math.random() * (max - min); }
+
+// 터치 튜토리얼 — 탭/드래그/스와이프 순차
+function TouchTutorialActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
+  const t = tone;
+  const color = t.cat.computer;
+  const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
+  const stageRef = useRefA(null);
+  const idRef = useRefA(1);
+  const [gi, setGi] = useStateA(0);
+  const g = TOUCH_GESTURES[gi];
+  const [progress, setProgress] = useStateA(0);
+  const [done, setDone] = useStateA(false);
+  const [balloons, setBalloons] = useStateA([]);
+  const [itemPos, setItemPos] = useStateA({ x: 28, y: 45 });
+  const [dragging, setDragging] = useStateA(false);
+  const [swipeX, setSwipeX] = useStateA(0);
+  const swipeStart = useRefA(null);
+
+  const setupGesture = (idx) => {
+    const gg = TOUCH_GESTURES[idx];
+    setProgress(0); setSwipeX(0); setDragging(false);
+    if (gg.id === 'tap') setBalloons(Array.from({ length: gg.count }, () => ({ id: idRef.current++, x: rand(14, 86), y: rand(18, 78) })));
+    else setBalloons([]);
+    if (gg.id === 'drag') setItemPos({ x: rand(14, 38), y: rand(28, 68) });
+    speakKo(gg.prompt);
+  };
+  useEffectA(() => { setupGesture(gi); }, [gi]);
+
+  const finishGesture = () => {
+    if (gi >= TOUCH_GESTURES.length - 1) { setDone(true); onComplete && onComplete(3); }
+    else setGi(gi + 1);
+  };
+  const repDone = () => {
+    playSfx('correct'); onComplete && onComplete(1);
+    const np = progress + 1;
+    if (np >= g.count) finishGesture();
+    else {
+      setProgress(np);
+      if (g.id === 'drag') setItemPos({ x: rand(14, 38), y: rand(28, 68) });
+      if (g.id === 'swipe') setSwipeX(0);
+    }
+  };
+
+  // 탭: 풍선 터뜨리기
+  const popBalloon = (id) => {
+    playSfx('select'); onComplete && onComplete(1);
+    setBalloons((b) => {
+      const rest = b.filter((x) => x.id !== id);
+      if (rest.length === 0) finishGesture();
+      return rest;
+    });
+  };
+
+  // 드래그: 사과 → 바구니
+  const pct = (e) => {
+    const el = stageRef.current; if (!el) return { x: 50, y: 50 };
+    const r = el.getBoundingClientRect();
+    return { x: Math.max(0, Math.min(100, ((e.clientX - r.left) / r.width) * 100)),
+             y: Math.max(0, Math.min(100, ((e.clientY - r.top) / r.height) * 100)) };
+  };
+  const itemDown = (e) => { try { e.currentTarget.setPointerCapture(e.pointerId); } catch {} setDragging(true); };
+  const itemMove = (e) => { if (!dragging) return; setItemPos(pct(e)); };
+  const itemUp = (e) => {
+    if (!dragging) return;
+    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
+    setDragging(false);
+    const p = pct(e);
+    if (p.x > 68 && p.y > 58) repDone();
+    else setItemPos({ x: rand(14, 38), y: rand(28, 68) });
+  };
+
+  // 스와이프: 카드 밀기
+  const swDown = (e) => { try { e.currentTarget.setPointerCapture(e.pointerId); } catch {} swipeStart.current = e.clientX; };
+  const swMove = (e) => { if (swipeStart.current == null) return; setSwipeX(e.clientX - swipeStart.current); };
+  const swUp = (e) => {
+    if (swipeStart.current == null) return;
+    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
+    const dx = e.clientX - swipeStart.current; swipeStart.current = null;
+    if (Math.abs(dx) > 120) repDone();
+    else setSwipeX(0);
+  };
+
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', position: 'relative' }}>
+      <div style={{ height: 88, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
+        <div style={{ fontSize: fontSize + 14, fontWeight: 900, color: t.text, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 36 }}>👆</span>터치 연습
+          <span style={{ fontSize: fontSize - 2, fontWeight: 900, background: t.accent, color: t.text,
+            padding: '4px 14px', borderRadius: 16, border: t.outline === 'none' ? 'none' : t.outline, marginLeft: 6 }}>{g.name}</span>
+        </div>
+      </div>
+
+      {!done ? (
+        <React.Fragment>
+          <button onClick={() => speakKo(g.prompt)}
+            style={{ flex: '0 0 auto', alignSelf: 'center', margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: 10,
+              background: '#fff', border: accentBorder, borderRadius: 24, padding: '10px 22px', boxShadow: t.shadowSm, cursor: 'pointer', fontFamily: 'inherit' }}>
+            <span style={{ fontSize: 24 }}>🔊</span><span style={{ fontSize: fontSize + 4, fontWeight: 900, color: t.text }}>{g.prompt}</span>
+          </button>
+
+          <div ref={stageRef} style={{ flex: 1, position: 'relative', margin: '0 28px 14px', borderRadius: 18,
+            background: t.surfaceAlt || '#FAFAFA', border: accentBorder, overflow: 'hidden', touchAction: 'none', minHeight: 0 }}>
+            {g.id === 'tap' && balloons.map((b) => (
+              <button key={b.id} onClick={() => popBalloon(b.id)}
+                style={{ position: 'absolute', left: `${b.x}%`, top: `${b.y}%`, transform: 'translate(-50%, -50%)',
+                  fontSize: 72, lineHeight: 1, background: 'none', border: 'none', cursor: 'pointer', padding: 0, touchAction: 'none' }}>{g.emoji}</button>
+            ))}
+            {g.id === 'drag' && (
+              <React.Fragment>
+                <div style={{ position: 'absolute', right: '6%', bottom: '6%', fontSize: 96, lineHeight: 1 }}>{g.target}</div>
+                <div onPointerDown={itemDown} onPointerMove={itemMove} onPointerUp={itemUp} onPointerCancel={itemUp}
+                  style={{ position: 'absolute', left: `${itemPos.x}%`, top: `${itemPos.y}%`, transform: 'translate(-50%, -50%)',
+                    fontSize: 72, lineHeight: 1, cursor: 'grab', touchAction: 'none', userSelect: 'none' }}>{g.emoji}</div>
+              </React.Fragment>
+            )}
+            {g.id === 'swipe' && (
+              <div onPointerDown={swDown} onPointerMove={swMove} onPointerUp={swUp} onPointerCancel={swUp}
+                style={{ position: 'absolute', left: '50%', top: '50%', transform: `translate(calc(-50% + ${swipeX}px), -50%) rotate(${swipeX / 20}deg)`,
+                  width: 150, height: 200, borderRadius: 18, background: '#fff', border: accentBorder, boxShadow: t.shadow,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 90, cursor: 'grab', touchAction: 'none', userSelect: 'none' }}>{g.emoji}</div>
+            )}
+          </div>
+
+          <div style={{ flex: '0 0 auto', padding: '0 32px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ flex: 1, display: 'flex', gap: 10 }}>
+              {TOUCH_GESTURES.map((_, i) => (
+                <span key={i} style={{ flex: 1, height: 12, borderRadius: 6, background: i < gi ? color : i === gi ? t.accent : '#fff',
+                  border: i <= gi ? 'none' : `2px solid rgba(0,0,0,0.18)` }} />
+              ))}
+            </div>
+            <div style={{ fontSize: fontSize, fontWeight: 900, color: t.text }}>{progress}/{g.count}</div>
+          </div>
+        </React.Fragment>
+      ) : (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18 }}>
+          <div style={{ fontSize: 140, animation: 'kw-pop 0.6s cubic-bezier(.34,1.56,.64,1) both' }}>🎉</div>
+          <div style={{ fontSize: fontSize + 22, fontWeight: 900, color: t.text }}>다 했어요!</div>
+          <button onClick={() => { setGi(0); setDone(false); }}
+            style={{ background: color, color: t.textOnColor, border: t.outline === 'none' ? 'none' : t.outline, borderRadius: 28,
+              padding: '16px 30px', fontSize: fontSize + 2, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadow }}>🔄 다시</button>
+        </div>
+      )}
+
+      <VoiceGuide tone={t} show={voiceShow} text={done ? '잘했어!' : g.prompt} fontSize={fontSize - 4} />
+    </div>
+  );
+}
