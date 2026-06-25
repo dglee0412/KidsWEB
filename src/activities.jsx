@@ -2402,6 +2402,8 @@ function HangulActivity({ tone, subId, fontSize, onComplete, voiceShow }) {
   const [idx, setIdx] = useStateA(0);
   const [collected, setCollected] = useStateA(() => new Set());
   const [pingKey, setPingKey] = useStateA(0); // 글자 탭 → 사운드 파동
+  const wordTimerRef = useRefA(null);
+  useEffectA(() => () => { if (wordTimerRef.current) clearTimeout(wordTimerRef.current); }, []);
   const cur = data[idx];
   const color = t.cat.hangul;
   const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
@@ -2409,13 +2411,16 @@ function HangulActivity({ tone, subId, fontSize, onComplete, voiceShow }) {
   // 글자/발음 버튼 탭 → 학습 완료 + 별
   const learn = () => {
     setPingKey((k) => k + 1);
+    if (wordTimerRef.current) clearTimeout(wordTimerRef.current);
+    speakKo(cur.name);                         // 예: "기역" / "아"
+    wordTimerRef.current = setTimeout(() => { speakKo(cur.word); }, 1300); // 예: "기린" / "아기"
     if (!collected.has(idx)) {
       const ns = new Set(collected); ns.add(idx); setCollected(ns);
       onComplete && onComplete(1);
     }
   };
-  const next = () => setIdx((i) => (i + 1) % data.length);
-  const prev = () => setIdx((i) => (i - 1 + data.length) % data.length);
+  const next = () => { if (wordTimerRef.current) clearTimeout(wordTimerRef.current); setIdx((i) => (i + 1) % data.length); };
+  const prev = () => { if (wordTimerRef.current) clearTimeout(wordTimerRef.current); setIdx((i) => (i - 1 + data.length) % data.length); };
 
   // 예시 단어 — 첫 글자에 색 강조
   const firstChar = cur.word.charAt(0);
