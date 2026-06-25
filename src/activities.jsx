@@ -1649,6 +1649,7 @@ export function SentenceBuilderActivity({ tone, fontSize, onComplete, onFinish, 
   const wonRef = useRefA(false);
   const dragRef = useRefA(null);
   const slotRefs = useRefA({});
+  const stageRef = useRefA(null);
   const timersRef = useRefA([]);
   const addTimer = (id) => timersRef.current.push(id);
   useEffectA(() => () => { timersRef.current.forEach((id) => clearTimeout(id)); }, []);
@@ -1685,16 +1686,25 @@ export function SentenceBuilderActivity({ tone, fontSize, onComplete, onFinish, 
     else if (round.placed[slotIdx]) { const placed = round.placed.slice(); placed[slotIdx] = null; setRound({ ...round, placed }); setReveal(null); }
   };
 
+  const pctFromEvent = (e) => {
+    const el = stageRef.current;
+    if (!el) return { xPct: 50, yPct: 50 };
+    const r = el.getBoundingClientRect();
+    return {
+      xPct: Math.max(0, Math.min(100, ((e.clientX - r.left) / r.width) * 100)),
+      yPct: Math.max(0, Math.min(100, ((e.clientY - r.top) / r.height) * 100)),
+    };
+  };
   const cardDown = (e, cardIdx) => {
     if (done) return;
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
     dragRef.current = { cardIdx, sx: e.clientX, sy: e.clientY, moved: false };
-    setDrag({ cardIdx, x: e.clientX, y: e.clientY });
+    setDrag({ cardIdx, ...pctFromEvent(e) });
   };
   const cardMove = (e) => {
     const d = dragRef.current; if (!d) return;
     if (Math.hypot(e.clientX - d.sx, e.clientY - d.sy) > 6) d.moved = true;
-    setDrag({ cardIdx: d.cardIdx, x: e.clientX, y: e.clientY });
+    setDrag({ cardIdx: d.cardIdx, ...pctFromEvent(e) });
   };
   const cardUp = (e) => {
     const d = dragRef.current; if (!d) return;
@@ -1722,7 +1732,7 @@ export function SentenceBuilderActivity({ tone, fontSize, onComplete, onFinish, 
   const prevLevel = () => { if (levelIdx > 0) setLevelIdx(levelIdx - 1); };
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', position: 'relative' }}>
+    <div ref={stageRef} style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', position: 'relative' }}>
       <div style={{ height: 88, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
         <div style={{ fontSize: fontSize + 14, fontWeight: 900, color: t.text, display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 36 }}>{icon}</span>{title}
@@ -1782,7 +1792,7 @@ export function SentenceBuilderActivity({ tone, fontSize, onComplete, onFinish, 
           </div>
 
           {drag && (
-            <div style={{ position: 'fixed', left: drag.x, top: drag.y, transform: 'translate(-50%, -50%)',
+            <div style={{ position: 'absolute', left: `${drag.xPct}%`, top: `${drag.yPct}%`, transform: 'translate(-50%, -50%)',
               fontSize: 56, lineHeight: 1, pointerEvents: 'none', zIndex: 80, filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.25))' }}>
               {round.tray[drag.cardIdx]?.emoji}
             </div>
