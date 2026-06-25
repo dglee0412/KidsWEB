@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { PIANO_SONGS, DRUM_SONGS } from '../activities.jsx'
+import { PIANO_SONGS, DRUM_SONGS, XYLO_SONGS } from '../activities.jsx'
 
 const WHITE = new Set(['C','D','E','F','G','A','B','C5'])
 
@@ -20,6 +20,16 @@ describe('DRUM_SONGS', () => {
     DRUM_SONGS.forEach((s) => {
       expect(s.notes.length).toBeGreaterThanOrEqual(8)
       s.notes.forEach((n) => expect(DRUM.has(n)).toBe(true))
+    })
+  })
+})
+
+describe('XYLO_SONGS', () => {
+  it('3곡+, 각 note는 막대 id, 길이 ≥8', () => {
+    expect(XYLO_SONGS.length).toBeGreaterThanOrEqual(3)
+    XYLO_SONGS.forEach((s) => {
+      expect(s.notes.length).toBeGreaterThanOrEqual(8)
+      s.notes.forEach((n) => expect(WHITE.has(n)).toBe(true))
     })
   })
 })

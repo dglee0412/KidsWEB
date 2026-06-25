@@ -3718,11 +3718,19 @@ const XYLO_BARS = [
   { id: 'C5', ko: '도', freq: 1046.5, color: '#F38181', len: 154 },
 ];
 
+// 실로폰 연습곡 — 막대 id 시퀀스(동요). 백건반 음역(C~C5).
+export const XYLO_SONGS = [
+  { id: 'x1', name: '작은별', emoji: '⭐', notes: ['C','C','G','G','A','A','G','F','F','E','E','D','D','C'] },
+  { id: 'x2', name: '비행기', emoji: '✈️', notes: ['G','E','E','F','D','D','C','D','E','F','G','G','G'] },
+  { id: 'x3', name: '나비야', emoji: '🦋', notes: ['G','E','E','F','D','D','C','D','E','F','G','G','E'] },
+];
+
 function XyloActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
   const t = tone;
   const color = t.cat.music;
   const accentBorder = t.outline === 'none' ? `3px solid ${t.text}` : t.outline;
-  const [mode, setMode] = useStateA('free'); // 'free' | 'follow'
+  const [mode, setMode] = useStateA('free'); // 'free' | 'follow' | 'song'
+  const [songId, setSongId] = useStateA(null);
   const [pressed, setPressed] = useStateA(null);
   const [playedSet, setPlayedSet] = useStateA(() => new Set());
   const wonRef = useRefA(false);
@@ -3736,12 +3744,18 @@ function XyloActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
   useEffectA(() => {
     timersRef.current.forEach((id) => clearTimeout(id));
     timersRef.current = [];
-    follow.setFixed([]);
+    follow.setFixed([]); setSongId(null);
   }, [mode]);
 
   const BAR_IDS = XYLO_BARS.map((b) => b.id);
   const startNewFollow = () => follow.startRandom(BAR_IDS, 4, 6);
   const playBar = (bar) => playTone(bar.freq, { dur: 0.9, peak: 0.42, type: 'sine' });
+  const selectSong = (s) => { setSongId(s.id); follow.setFixed(s.notes); };
+  const advanceSong = () => {
+    const i = XYLO_SONGS.findIndex((s) => s.id === songId);
+    const nx = XYLO_SONGS[(i + 1) % XYLO_SONGS.length];
+    setSongId(nx.id); follow.setFixed(nx.notes);
+  };
 
   const tap = (bar) => {
     if (previewing.current) return;
@@ -3758,12 +3772,12 @@ function XyloActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
       }
       return;
     }
-    if (mode === 'follow' && follow.pattern.length) {
+    if ((mode === 'follow' || mode === 'song') && follow.pattern.length) {
       const result = follow.tap(bar.id);
       if (result === 'wrong') playSfx('wrong');
       else if (result === 'done') {
-        onComplete && onComplete(2);
-        addTimer(setTimeout(() => startNewFollow(), 900));
+        onComplete && onComplete(mode === 'song' ? 3 : 2);
+        addTimer(setTimeout(() => { if (mode === 'song') advanceSong(); else startNewFollow(); }, 900));
       }
     }
   };
@@ -3794,7 +3808,7 @@ function XyloActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
 
       {/* 모드 탭 */}
       <div style={{ flex: '0 0 auto', padding: '0 28px 8px', display: 'flex', gap: 10, justifyContent: 'center' }}>
-        {[{ id: 'free', name: '자유연주', emoji: '🎼' }, { id: 'follow', name: '따라치기', emoji: '🎵' }].map((m) => {
+        {[{ id: 'free', name: '자유연주', emoji: '🎼' }, { id: 'follow', name: '따라치기', emoji: '🎵' }, { id: 'song', name: '연습곡', emoji: '⭐' }].map((m) => {
           const active = mode === m.id;
           return (
             <button key={m.id} onClick={() => setMode(m.id)}
@@ -3829,19 +3843,25 @@ function XyloActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
             background: '#fff', border: accentBorder, borderRadius: t.cardRadius + 2, padding: '12px 16px', boxShadow: t.shadowSm,
             display: 'flex', flexDirection: 'column', gap: 10,
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-              <button onClick={startNewFollow}
-                style={{
-                  height: 42, padding: '0 18px', borderRadius: 21, background: t.accent, color: t.text,
-                  border: t.outline === 'none' ? 'none' : t.outline, fontSize: fontSize - 2, fontWeight: 900,
-                  cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadowSm,
-                }}>🎲 새 패턴</button>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+              {mode === 'song' ? (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {XYLO_SONGS.map((s) => (
+                    <button key={s.id} onClick={() => selectSong(s)}
+                      style={{ height: 42, padding: '0 14px', borderRadius: 21, background: songId === s.id ? color : '#fff',
+                        color: songId === s.id ? t.textOnColor : t.text, border: songId === s.id ? (t.outline === 'none' ? 'none' : t.outline) : accentBorder,
+                        fontSize: fontSize - 4, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit' }}>{s.emoji} {s.name}</button>
+                  ))}
+                </div>
+              ) : (
+                <button onClick={startNewFollow}
+                  style={{ height: 42, padding: '0 18px', borderRadius: 21, background: t.accent, color: t.text,
+                    border: t.outline === 'none' ? 'none' : t.outline, fontSize: fontSize - 2, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: t.shadowSm }}>🎲 새 패턴</button>
+              )}
               {follow.pattern.length > 0 && (
                 <button onClick={preview}
-                  style={{
-                    height: 38, padding: '0 14px', borderRadius: 19, background: '#fff', color: t.text,
-                    border: accentBorder, fontSize: fontSize - 4, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
-                  }}>🔊 들어보기</button>
+                  style={{ height: 38, padding: '0 14px', borderRadius: 19, background: '#fff', color: t.text,
+                    border: accentBorder, fontSize: fontSize - 4, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>🔊 들어보기</button>
               )}
             </div>
             {follow.pattern.length > 0 ? (
@@ -3864,7 +3884,7 @@ function XyloActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
                 {follow.feedback === 'done' && <div style={{ marginLeft: 8, display: 'flex', alignItems: 'center', fontSize: fontSize - 2, fontWeight: 900, color: t.cat.code }}>🎉 잘했어!</div>}
               </div>
             ) : (
-              <div style={{ textAlign: 'center', fontSize: fontSize - 4, color: t.textMuted, fontWeight: 700 }}>🎲 새 패턴을 눌러서 시작해봐</div>
+              <div style={{ textAlign: 'center', fontSize: fontSize - 4, color: t.textMuted, fontWeight: 700 }}>{mode === 'song' ? '🎵 연습곡을 골라봐' : '🎲 새 패턴을 눌러서 시작해봐'}</div>
             )}
           </div>
         )}
