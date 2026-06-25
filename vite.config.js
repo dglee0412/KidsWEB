@@ -2,7 +2,13 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// 배포 확인용 빌드 식별자(빌드 시각). 매 빌드마다 바뀌므로 부모설정에서 새 버전 적용 여부를 눈으로 확인할 수 있다.
+const BUILD_ID = new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC'
+
 export default defineConfig({
+  define: {
+    __BUILD_ID__: JSON.stringify(BUILD_ID),
+  },
   plugins: [
     react(),
     VitePWA({
