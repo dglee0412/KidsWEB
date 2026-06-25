@@ -295,30 +295,38 @@ function fallbackSpeak(text) {
   } catch {}
 }
 
+// 같은 언어의 보이스 중 품질 좋은 것 우선(없으면 첫 매칭, 그것도 없으면 기본).
+const VOICE_PREFER = /google|neural|natural|yuna|유나|premium|enhanced/i;
+function pickVoice(langPrefix) {
+  try {
+    const all = window.speechSynthesis.getVoices() || [];
+    const same = all.filter((v) => new RegExp('^' + langPrefix, 'i').test(v.lang));
+    return same.find((v) => VOICE_PREFER.test(v.name)) || same[0] || null;
+  } catch { return null; }
+}
+
 // 영어 음성 — speechSynthesis en-US. 음량은 voice 슬라이더(vols.voice)와 연동.
-export function speakEn(text, { rate = 0.85, pitch = 1.15 } = {}) {
+export function speakEn(text, { rate = 0.9, pitch = 1.0 } = {}) {
   try {
     if (!text || !('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(String(text));
     u.lang = 'en-US';
     u.rate = rate; u.pitch = pitch; u.volume = vols.voice;
-    const en = (window.speechSynthesis.getVoices() || []).find((v) => /^en/i.test(v.lang));
-    if (en) u.voice = en;
+    u.voice = pickVoice('en');
     window.speechSynthesis.speak(u);
   } catch {}
 }
 
 // 한국어 단어 음성 — speechSynthesis ko-KR. 음량은 voice 슬라이더 연동.
-export function speakKo(text, { rate = 0.95, pitch = 1.3 } = {}) {
+export function speakKo(text, { rate = 0.9, pitch = 1.05 } = {}) {
   try {
     if (!text || !('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(String(text));
     u.lang = 'ko-KR';
     u.rate = rate; u.pitch = pitch; u.volume = vols.voice;
-    const ko = (window.speechSynthesis.getVoices() || []).find((v) => /^ko/i.test(v.lang));
-    if (ko) u.voice = ko;
+    u.voice = pickVoice('ko');
     window.speechSynthesis.speak(u);
   } catch {}
 }
