@@ -25,6 +25,10 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // 새 버전 배포 시 새 SW가 즉시 take control → 새로고침 한 번에 적용
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         // 음성(작은 mp3)은 프리캐시, BGM(큰 mp3)은 제외하고 런타임 캐싱으로 처리
         globPatterns: ['**/*.{js,css,html,png,woff2,mp3}'],
         globIgnores: ['**/bgm/*.mp3'],

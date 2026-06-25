@@ -1,9 +1,25 @@
 import React, { useState, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
+import { registerSW } from 'virtual:pwa-register'
 import { KidsApp } from './app.jsx'
 import { KIDS_TONES } from './themes.jsx'
 import { loadSettings, saveSettings } from './lib/storage.js'
 import './styles.css'
+
+// PWA 자동 업데이트: registerType:'autoUpdate'가 새 SW를 즉시 적용+새로고침한다.
+// 단, 새 배포 "감지"는 등록 시점에만 일어나므로, 설치형(항상 켜둔) 앱이 새 버전을
+// 놓치지 않도록 주기적으로 + 다시 화면으로 돌아올 때마다 업데이트를 확인한다.
+const UPDATE_CHECK_MS = 30 * 60 * 1000 // 30분
+registerSW({
+  immediate: true,
+  onRegisteredSW(_swUrl, reg) {
+    if (!reg) return
+    setInterval(() => { reg.update().catch(() => {}) }, UPDATE_CHECK_MS)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') reg.update().catch(() => {})
+    })
+  },
+})
 
 const DESIGN_W = 1024
 const DESIGN_H = 768
