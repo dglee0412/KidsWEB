@@ -3475,11 +3475,14 @@ const PIANO_BLACK = [
   { id: 'As', ko: '라#', freq: 466.16, after: 5 },
 ];
 // 연습곡 — 단순 스케일 / 아르페지오 패턴 (저작권 곡 아님)
-const PIANO_SONGS = [
+export const PIANO_SONGS = [
   { id: 's1', name: '오르락 내리락', emoji: '⛰️', notes: ['C','D','E','F','G','F','E','D','C'] },
   { id: 's2', name: '둥글둥글',     emoji: '🔵', notes: ['C','E','G','E','C','E','G','C5'] },
   { id: 's3', name: '깡총깡총',     emoji: '🐰', notes: ['C','G','D','A','E','B'] },
   { id: 's4', name: '계단 오르기',  emoji: '🪜', notes: ['C','D','C','E','D','F','E','G','F','A'] },
+  { id: 's5', name: '작은별',   emoji: '⭐', notes: ['C','C','G','G','A','A','G','F','F','E','E','D','D','C'] },
+  { id: 's6', name: '비행기',   emoji: '✈️', notes: ['G','E','E','F','D','D','C','D','E','F','G','G','G'] },
+  { id: 's7', name: '나비야',   emoji: '🦋', notes: ['G','E','E','F','D','D','C','D','E','F','G','G','E'] },
 ];
 
 const MUSIC_MODES = [
