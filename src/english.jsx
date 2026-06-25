@@ -2,7 +2,7 @@
 import React from 'react'
 import { VoiceGuide } from './shell.jsx'
 import { LevelStepper, useMultiPick, multiTargetOptions, PickMark, WordMatchActivity, WORD_THEMES, SentenceBuilderActivity } from './activities.jsx'
-import { playSfx, speakEn } from './lib/audio.js'
+import { playSfx, speakEn, playTone } from './lib/audio.js'
 
 const { useState: useS, useEffect: useE, useRef: useR } = React;
 
@@ -405,6 +405,18 @@ function EnglishTraceActivity({ tone, fontSize, onComplete, voiceShow }) {
   );
 }
 
+// ABC 노래 = 반짝반짝 작은별 곡조. dur: 1=기본, 0.5=빠름(LMNOP), 2=길게.
+const ABC_NOTE_FREQ = { C: 261.63, D: 293.66, E: 329.63, F: 349.23, G: 392.00, A: 440.00 };
+export const ABC_SONG = [
+  { letter: 'A', note: 'C', dur: 1 }, { letter: 'B', note: 'C', dur: 1 }, { letter: 'C', note: 'G', dur: 1 }, { letter: 'D', note: 'G', dur: 1 },
+  { letter: 'E', note: 'A', dur: 1 }, { letter: 'F', note: 'A', dur: 1 }, { letter: 'G', note: 'G', dur: 2 },
+  { letter: 'H', note: 'F', dur: 1 }, { letter: 'I', note: 'F', dur: 1 }, { letter: 'J', note: 'E', dur: 1 }, { letter: 'K', note: 'E', dur: 1 },
+  { letter: 'L', note: 'D', dur: 0.5 }, { letter: 'M', note: 'D', dur: 0.5 }, { letter: 'N', note: 'D', dur: 0.5 }, { letter: 'O', note: 'D', dur: 0.5 }, { letter: 'P', note: 'C', dur: 2 },
+  { letter: 'Q', note: 'G', dur: 1 }, { letter: 'R', note: 'G', dur: 1 }, { letter: 'S', note: 'F', dur: 2 },
+  { letter: 'T', note: 'F', dur: 1 }, { letter: 'U', note: 'E', dur: 1 }, { letter: 'V', note: 'E', dur: 2 },
+  { letter: 'W', note: 'D', dur: 1 }, { letter: 'X', note: 'D', dur: 1 }, { letter: 'Y', note: 'D', dur: 1 }, { letter: 'Z', note: 'C', dur: 2 },
+];
+
 // ABC 노래 — A~Z 격자. ▶ 누르면 순서대로 하이라이트하며 speakEn. 탭하면 그 글자 발음.
 function AbcSongActivity({ tone, fontSize, onComplete, voiceShow }) {
   const t = tone;
@@ -424,17 +436,22 @@ function AbcSongActivity({ tone, fontSize, onComplete, voiceShow }) {
   const play = () => {
     if (playing.current) { stop(); return; }
     playing.current = true; setIsPlaying(true);
-    ALPHABET.forEach((a, i) => {
+    const BEAT = 520; // ms per dur=1
+    let at = 0;
+    ABC_SONG.forEach((step, i) => {
       addT(setTimeout(() => {
         if (!playing.current) return;
-        setPlayIdx(i); speakEn(a.u, { rate: 0.9 });
-        if (i === ALPHABET.length - 1) {
+        setPlayIdx(i);
+        playTone(ABC_NOTE_FREQ[step.note], { dur: Math.max(0.25, step.dur * 0.5), peak: 0.4, type: 'triangle' });
+        speakEn(step.letter, { rate: 1.0 });
+        if (i === ABC_SONG.length - 1) {
           addT(setTimeout(() => {
             playing.current = false; setIsPlaying(false); setPlayIdx(-1);
             if (!wonRef.current) { wonRef.current = true; onComplete && onComplete(3); }
-          }, 700));
+          }, step.dur * BEAT + 300));
         }
-      }, i * 700));
+      }, at));
+      at += step.dur * BEAT;
     });
   };
   const tapLetter = (a) => { if (!playing.current) speakEn(a.u); };

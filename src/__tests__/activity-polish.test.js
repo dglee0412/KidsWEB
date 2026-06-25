@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { PIANO_SONGS, DRUM_SONGS, XYLO_SONGS } from '../activities.jsx'
+import { ABC_SONG } from '../english.jsx'
 
 const WHITE = new Set(['C','D','E','F','G','A','B','C5'])
 
@@ -30,6 +31,18 @@ describe('XYLO_SONGS', () => {
     XYLO_SONGS.forEach((s) => {
       expect(s.notes.length).toBeGreaterThanOrEqual(8)
       s.notes.forEach((n) => expect(WHITE.has(n)).toBe(true))
+    })
+  })
+})
+
+describe('ABC_SONG', () => {
+  it('26글자 A~Z 순서 + 유효 음/길이', () => {
+    expect(ABC_SONG).toHaveLength(26)
+    const NOTE = new Set(['C','D','E','F','G','A'])
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach((ch, i) => {
+      expect(ABC_SONG[i].letter).toBe(ch)
+      expect(NOTE.has(ABC_SONG[i].note)).toBe(true)
+      expect(ABC_SONG[i].dur).toBeGreaterThan(0)
     })
   })
 })
