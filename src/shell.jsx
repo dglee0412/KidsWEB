@@ -1294,6 +1294,11 @@ function ParentSettings({ tone, onClose, settings: appSettings, onSettingsChange
               초기화는 되돌릴 수 없어요. 신중히 결정해주세요.
             </div>
           </SettingsCard>
+
+          {/* 빌드 버전 — 배포 적용 확인용 */}
+          <div style={{ textAlign: 'center', marginTop: 18, marginBottom: 4, fontSize: 11, fontWeight: 600, color: subInk, opacity: 0.7 }}>
+            KidsWeb v1.0.1 · build {__BUILD_ID__}
+          </div>
         </div>
       </div>
 
