@@ -3495,11 +3495,11 @@ const MUSIC_MODES = [
 // 음악 - 드럼 (5패드 자유연주)
 // ─────────────────────────────────────────────────────────────
 const DRUM_PADS = [
-  { id: 'kick',   name: '킥',     emoji: '🥁', color: '#FF6B6B' },
-  { id: 'snare',  name: '스네어', emoji: '🥁', color: '#FFCB57' },
-  { id: 'tom',    name: '탐',     emoji: '🥁', color: '#98D6A6' },
-  { id: 'hihat',  name: '하이햇', emoji: '🎩', color: '#5C8AE6' },
-  { id: 'cymbal', name: '심벌',   emoji: '🟡', color: '#AA96DA' },
+  { id: 'kick',   name: '킥',     emoji: '🥁', animal: '🐻', color: '#FF6B6B' },
+  { id: 'snare',  name: '스네어', emoji: '🪘', animal: '🐰', color: '#FFCB57' },
+  { id: 'tom',    name: '탐',     emoji: '🔔', animal: '🐸', color: '#98D6A6' },
+  { id: 'hihat',  name: '하이햇', emoji: '🎩', animal: '🐱', color: '#5C8AE6' },
+  { id: 'cymbal', name: '심벌',   emoji: '💿', animal: '🐥', color: '#AA96DA' },
 ];
 
 // 북 연습곡 — 패드 id 시퀀스(리듬). 저작권 곡 아님.
@@ -3539,6 +3539,8 @@ function DrumActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
     const nx = DRUM_SONGS[(i + 1) % DRUM_SONGS.length];
     setSongId(nx.id); follow.setFixed(nx.notes);
   };
+  const [iconSet, setIconSet] = useStateA('inst'); // 'inst'(악기) | 'animal'(동물)
+  const padIcon = (p) => (iconSet === 'animal' ? p.animal : p.emoji);
 
   const tap = (pad) => {
     if (previewing.current) return;
@@ -3583,10 +3585,18 @@ function DrumActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
-      <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
+      <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto', position: 'relative' }}>
         <div style={{ fontSize: fontSize + 14, fontWeight: 900, color: t.text, display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 36 }}>🥁</span>드럼
         </div>
+        <button onClick={() => setIconSet((s) => (s === 'animal' ? 'inst' : 'animal'))}
+          aria-label="드럼 아이콘 바꾸기"
+          style={{ position: 'absolute', right: 28, top: '50%', transform: 'translateY(-50%)',
+            height: 48, padding: '0 16px', borderRadius: 24, background: '#fff', color: t.text,
+            border: accentBorder, fontSize: fontSize - 2, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit',
+            display: 'flex', alignItems: 'center', gap: 8, boxShadow: t.shadowSm }}>
+          <span style={{ fontSize: 26 }}>{iconSet === 'animal' ? '🐻' : '🥁'}</span>{iconSet === 'animal' ? '동물' : '악기'}
+        </button>
       </div>
 
       {/* 모드 탭 */}
@@ -3660,7 +3670,7 @@ function DrumActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
                       border: isCurrent ? `3px solid ${t.text}` : `2px solid rgba(0,0,0,0.10)`,
                       display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24,
                       boxShadow: isCurrent ? `0 0 0 3px ${t.accent}` : 'none',
-                    }}>{pad ? pad.emoji : '?'}</div>
+                    }}>{pad ? padIcon(pad) : '?'}</div>
                   );
                 })}
                 {follow.feedback === 'done' && <div style={{ marginLeft: 8, display: 'flex', alignItems: 'center', fontSize: fontSize - 2, fontWeight: 900, color: t.cat.code }}>🎉 잘했어!</div>}
@@ -3690,7 +3700,7 @@ function DrumActivity({ tone, fontSize, onComplete, onFinish, voiceShow }) {
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                 gap: 8, padding: 14, userSelect: 'none', touchAction: 'manipulation',
               }}>
-              <span style={{ fontSize: 90, lineHeight: 1, filter: 'drop-shadow(0 4px 0 rgba(0,0,0,0.18))' }}>{p.emoji}</span>
+              <span style={{ fontSize: 90, lineHeight: 1, filter: 'drop-shadow(0 4px 0 rgba(0,0,0,0.18))' }}>{padIcon(p)}</span>
               <span style={{ fontSize: fontSize + 4, fontWeight: 900 }}>{p.name}</span>
             </button>
           );
